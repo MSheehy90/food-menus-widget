@@ -1,0 +1,457 @@
+{
+  "threshold": 5,
+  "heroes": [
+    {
+      "id": "beef-pho",
+      "file": "assets/dishes/5star/heroes/beef-pho.png",
+      "match": [
+        "pho",
+        "rice noodles"
+      ],
+      "restaurant": "Pho Shop"
+    },
+    {
+      "id": "street-tacos",
+      "file": "assets/dishes/5star/heroes/street-tacos.png",
+      "match": [
+        "taco"
+      ],
+      "restaurant": "Taqueria"
+    },
+    {
+      "id": "mushroom-risotto",
+      "file": "assets/dishes/5star/heroes/mushroom-risotto.png",
+      "match": [
+        "risotto",
+        "mushroom"
+      ],
+      "restaurant": "Fine Dining"
+    },
+    {
+      "id": "apple-pie",
+      "file": "assets/dishes/5star/heroes/apple-pie.png",
+      "match": [
+        "pie",
+        "apple"
+      ],
+      "restaurant": "Bakery"
+    }
+  ],
+  "tiles": [
+    {
+      "file": "assets/dishes/5star/tiles/hq-01.png",
+      "name": "hq-01",
+      "index": 1
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-02.png",
+      "name": "hq-02",
+      "index": 2
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-03.png",
+      "name": "hq-03",
+      "index": 3
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-04.png",
+      "name": "hq-04",
+      "index": 4
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-05.png",
+      "name": "hq-05",
+      "index": 5
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-06.png",
+      "name": "hq-06",
+      "index": 6
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-07.png",
+      "name": "hq-07",
+      "index": 7
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-08.png",
+      "name": "hq-08",
+      "index": 8
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-09.png",
+      "name": "hq-09",
+      "index": 9
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-10.png",
+      "name": "hq-10",
+      "index": 10
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-11.png",
+      "name": "hq-11",
+      "index": 11
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-12.png",
+      "name": "hq-12",
+      "index": 12
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-13.png",
+      "name": "hq-13",
+      "index": 13
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-14.png",
+      "name": "hq-14",
+      "index": 14
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-15.png",
+      "name": "hq-15",
+      "index": 15
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-16.png",
+      "name": "hq-16",
+      "index": 16
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-17.png",
+      "name": "hq-17",
+      "index": 17
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-18.png",
+      "name": "hq-18",
+      "index": 18
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-19.png",
+      "name": "hq-19",
+      "index": 19
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-20.png",
+      "name": "hq-20",
+      "index": 20
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-21.png",
+      "name": "hq-21",
+      "index": 21
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-22.png",
+      "name": "hq-22",
+      "index": 22
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-23.png",
+      "name": "hq-23",
+      "index": 23
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-24.png",
+      "name": "hq-24",
+      "index": 24
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-25.png",
+      "name": "hq-25",
+      "index": 25
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-26.png",
+      "name": "hq-26",
+      "index": 26
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-27.png",
+      "name": "hq-27",
+      "index": 27
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-28.png",
+      "name": "hq-28",
+      "index": 28
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-29.png",
+      "name": "hq-29",
+      "index": 29
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-30.png",
+      "name": "hq-30",
+      "index": 30
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-31.png",
+      "name": "hq-31",
+      "index": 31
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-32.png",
+      "name": "hq-32",
+      "index": 32
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-33.png",
+      "name": "hq-33",
+      "index": 33
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-34.png",
+      "name": "hq-34",
+      "index": 34
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-35.png",
+      "name": "hq-35",
+      "index": 35
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-36.png",
+      "name": "hq-36",
+      "index": 36
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-37.png",
+      "name": "hq-37",
+      "index": 37
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-38.png",
+      "name": "hq-38",
+      "index": 38
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-39.png",
+      "name": "hq-39",
+      "index": 39
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-40.png",
+      "name": "hq-40",
+      "index": 40
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-41.png",
+      "name": "hq-41",
+      "index": 41
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-42.png",
+      "name": "hq-42",
+      "index": 42
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-43.png",
+      "name": "hq-43",
+      "index": 43
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-44.png",
+      "name": "hq-44",
+      "index": 44
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-45.png",
+      "name": "hq-45",
+      "index": 45
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-46.png",
+      "name": "hq-46",
+      "index": 46
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-47.png",
+      "name": "hq-47",
+      "index": 47
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-48.png",
+      "name": "hq-48",
+      "index": 48
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-49.png",
+      "name": "hq-49",
+      "index": 49
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-50.png",
+      "name": "hq-50",
+      "index": 50
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-51.png",
+      "name": "hq-51",
+      "index": 51
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-52.png",
+      "name": "hq-52",
+      "index": 52
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-53.png",
+      "name": "hq-53",
+      "index": 53
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-54.png",
+      "name": "hq-54",
+      "index": 54
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-55.png",
+      "name": "hq-55",
+      "index": 55
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-56.png",
+      "name": "hq-56",
+      "index": 56
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-57.png",
+      "name": "hq-57",
+      "index": 57
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-58.png",
+      "name": "hq-58",
+      "index": 58
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-59.png",
+      "name": "hq-59",
+      "index": 59
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-60.png",
+      "name": "hq-60",
+      "index": 60
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-61.png",
+      "name": "hq-61",
+      "index": 61
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-62.png",
+      "name": "hq-62",
+      "index": 62
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-63.png",
+      "name": "hq-63",
+      "index": 63
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-64.png",
+      "name": "hq-64",
+      "index": 64
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-65.png",
+      "name": "hq-65",
+      "index": 65
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-66.png",
+      "name": "hq-66",
+      "index": 66
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-67.png",
+      "name": "hq-67",
+      "index": 67
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-68.png",
+      "name": "hq-68",
+      "index": 68
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-69.png",
+      "name": "hq-69",
+      "index": 69
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-70.png",
+      "name": "hq-70",
+      "index": 70
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-71.png",
+      "name": "hq-71",
+      "index": 71
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-72.png",
+      "name": "hq-72",
+      "index": 72
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-73.png",
+      "name": "hq-73",
+      "index": 73
+    }
+  ],
+  "produce": [
+    {
+      "file": "assets/ingredients/5star/kale.png",
+      "name": "kale"
+    },
+    {
+      "file": "assets/ingredients/5star/red-bell-pepper.png",
+      "name": "red-bell-pepper"
+    },
+    {
+      "file": "assets/ingredients/5star/broccoli.png",
+      "name": "broccoli"
+    },
+    {
+      "file": "assets/ingredients/5star/fennel.png",
+      "name": "fennel"
+    },
+    {
+      "file": "assets/ingredients/5star/peas.png",
+      "name": "peas"
+    },
+    {
+      "file": "assets/ingredients/5star/strawberries.png",
+      "name": "strawberries"
+    },
+    {
+      "file": "assets/ingredients/5star/pumpkin.png",
+      "name": "pumpkin"
+    },
+    {
+      "file": "assets/ingredients/5star/avocado.png",
+      "name": "avocado"
+    },
+    {
+      "file": "assets/ingredients/5star/olives.png",
+      "name": "olives"
+    },
+    {
+      "file": "assets/ingredients/5star/oranges.png",
+      "name": "oranges"
+    },
+    {
+      "file": "assets/ingredients/5star/pears.png",
+      "name": "pears"
+    },
+    {
+      "file": "assets/ingredients/5star/coffee-beans.png",
+      "name": "coffee-beans"
+    }
+  ]
+}
