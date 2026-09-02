@@ -1,0 +1,26 @@
+id,section,item,value,notes,updatedAt
+star:freshcarb,star,freshCarb,"{'stars': 1.0, 'label': 'Fresh noodles / fresh processed carb'}",,2026-09-02T00:00:00.000Z
+star:dehydratedcarb,star,dehydratedCarb,"{'stars': 0.5, 'label': 'Dehydrated / shelf noodles'}",,2026-09-02T00:00:00.000Z
+star:processedprotein,star,processedProtein,"{'stars': 1.0, 'label': 'Processed protein (e.g. chashu)'}",,2026-09-02T00:00:00.000Z
+star:simplebroth,star,simpleBroth,"{'stars': 0.5, 'label': 'Simple bone broth'}",,2026-09-02T00:00:00.000Z
+star:complexbroth,star,complexBroth,"{'stars': 1.0, 'label': 'Fermented / complex broth (e.g. miso)'}",,2026-09-02T00:00:00.000Z
+star:complexcondiment,star,complexCondiment,"{'stars': 1.0, 'label': 'Processed multi-input condiment'}",,2026-09-02T00:00:00.000Z
+star:herbgarnish,star,herbGarnish,"{'stars': 0.5, 'label': 'Scallion / fresh herbs'}",,2026-09-02T00:00:00.000Z
+star:halfboiledegg,star,halfBoiledEgg,"{'stars': 0.25, 'label': '½ boiled egg'}",,2026-09-02T00:00:00.000Z
+star:halfseasonedboiledegg,star,halfSeasonedBoiledEgg,"{'stars': 0.5, 'label': '½ seasoned boiled egg'}",,2026-09-02T00:00:00.000Z
+hunger:carb,hunger,carb,"{'fill': 1.0, 'label': 'Carb fills hunger'}",,2026-09-02T00:00:00.000Z
+hunger:protein,hunger,protein,"{'fill': 1.0, 'label': 'Protein fills hunger'}",,2026-09-02T00:00:00.000Z
+hunger:wholeegg,hunger,wholeEgg,"{'fill': 1.0, 'label': 'Whole egg satiation (no stars)'}",,2026-09-02T00:00:00.000Z
+hunger:halfegg,hunger,halfEgg,"{'fill': 0.5, 'label': 'Half egg satiation'}",,2026-09-02T00:00:00.000Z
+hunger:broth,hunger,broth,"{'fill': 0.35, 'label': 'Broth'}",,2026-09-02T00:00:00.000Z
+hunger:dairy,hunger,dairy,"{'fill': 0.4, 'label': 'Dairy'}",,2026-09-02T00:00:00.000Z
+hunger:fat,hunger,fat,"{'fill': 0.25, 'label': 'Fat'}",,2026-09-02T00:00:00.000Z
+hunger:fruit,hunger,fruit,"{'fill': 0.3, 'label': 'Fruit'}",,2026-09-02T00:00:00.000Z
+hunger:vegetable,hunger,vegetable,"{'fill': 0.3, 'label': 'Vegetable'}",,2026-09-02T00:00:00.000Z
+hunger:other,hunger,other,"{'fill': 0.15, 'label': 'Other'}",,2026-09-02T00:00:00.000Z
+flavor:spice,flavor,spice,"{'fill': 1.0, 'label': 'Spice fills flavor → happiness/health'}",,2026-09-02T00:00:00.000Z
+flavor:herb,flavor,herb,"{'fill': 1.0, 'label': 'Herbs fill flavor → happiness/health'}",,2026-09-02T00:00:00.000Z
+flavor:condiment,flavor,condiment,"{'fill': 0.6, 'label': 'Condiment accent'}",,2026-09-02T00:00:00.000Z
+flavor:acid,flavor,acid,"{'fill': 0.5, 'label': 'Bright acid accent'}",,2026-09-02T00:00:00.000Z
+flavor:other,flavor,other,"{'fill': 0.0, 'label': 'No flavor meter contribution'}",,2026-09-02T00:00:00.000Z
+example:fresh-ramen-chashu-pork-broth-scallion,example,fresh-ramen-chashu-pork-broth-scallion,3,LOCKED,2026-09-02T00:00:00.000Z

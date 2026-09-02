@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a1410" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Menus" />
+  <meta name="description" content="Snowpiercer visual food combination author" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="fonts/figtree.css" />
+  <link rel="stylesheet" href="css/app.css" />
+  <title>Food Menus</title>
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand-row">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <p class="brand-name">Food Menus</p>
+        </div>
+        <div class="top-actions">
+          <button type="button" class="icon-btn" id="btn-gallery" title="Art gallery" aria-label="Art gallery">▦</button>
+          <button type="button" class="icon-btn" id="btn-kept" title="Kept plates" aria-label="Kept plates">
+            ♥<span id="kept-count">0</span>
+          </button>
+          <button type="button" class="chip-btn" id="btn-sync-pull" title="Pull sheet into widget">Pull</button>
+          <button type="button" class="chip-btn accent" id="btn-save-drive" title="Push dirty rows to sheet / JSON">Save</button>
+        </div>
+      </div>
+      <p class="drive-status muted" id="drive-status" hidden></p>
+    </header>
+
+    <!-- HOME: plate + locker -->
+    <main id="view-home" class="view">
+      <div class="mode-rail" role="tablist" aria-label="Authoring mode">
+        <button type="button" class="mode-chip active" id="mode-dish" data-mode="dish">Create dish</button>
+        <button type="button" class="mode-chip" id="mode-ingredient" data-mode="ingredient">Create ingredient</button>
+      </div>
+
+      <section class="plate-stage" id="plate-stage" aria-label="Basic dish plate">
+        <div class="plate-glow" aria-hidden="true"></div>
+        <div class="plate-bowl" id="plate-bowl" data-drop="plate">
+          <div class="plate-rim"></div>
+          <div class="plate-well" id="plate-stack"></div>
+          <p class="plate-empty" id="plate-empty">Tap food onto the plate</p>
+        </div>
+        <label class="dish-name-wrap" for="dish-name">
+          <span class="sr-only">Dish name</span>
+          <input type="text" id="dish-name" class="dish-name-input" maxlength="80"
+            placeholder="Dish name" autocomplete="off" enterkeyhint="done" />
+        </label>
+        <div class="plate-meters" id="plate-meters"></div>
+        <ul class="recipe-list" id="recipe-list" aria-label="Recipe ingredients"></ul>
+        <div class="restaurant-rail" id="restaurant-rail" aria-label="Restaurant tag"></div>
+        <div class="plate-actions">
+          <button type="button" class="ghost-round" id="btn-clear-tray" aria-label="Clear plate">✕</button>
+          <button type="button" class="cook-btn" id="btn-create-dish" disabled>Create dish</button>
+        </div>
+        <p class="plate-hint" id="tray-hint"></p>
+      </section>
+
+      <!-- Create ingredient authoring (same visual language) -->
+      <section class="ingredient-author hidden" id="ingredient-author" aria-label="Create ingredient">
+        <label class="dish-name-wrap" for="output-name">
+          <span class="sr-only">Output ingredient</span>
+          <input type="text" id="output-name" class="dish-name-input" maxlength="80"
+            placeholder="Output ingredient name" autocomplete="off" list="process-output-list" />
+          <datalist id="process-output-list"></datalist>
+        </label>
+        <div class="process-picker" id="process-picker" aria-label="Process recipes"></div>
+        <div class="process-chain-view" id="process-chain-view" aria-label="Process chain"></div>
+        <ul class="process-slots" id="process-slots" aria-label="Required inputs"></ul>
+        <div class="shelf-compare" id="shelf-compare" hidden></div>
+        <div class="plate-actions">
+          <button type="button" class="ghost-round" id="btn-clear-process" aria-label="Clear inputs">✕</button>
+          <button type="button" class="cook-btn" id="btn-create-ingredient" disabled>Create ingredient</button>
+        </div>
+        <p class="plate-hint" id="process-hint"></p>
+      </section>
+
+      <section class="locker">
+        <div class="type-rail" id="type-rail" aria-label="Ingredient types"></div>
+        <div class="family-tabs" id="family-tabs" role="tablist"></div>
+        <div id="ingredient-grid" class="ing-grid" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <!-- DISH: finished plate + visual variations -->
+    <main id="view-dish" class="view hidden">
+      <button type="button" class="back-btn" id="btn-back-home">← Locker</button>
+      <section class="dish-stage" id="dish-hero"></section>
+      <section class="var-rail-wrap">
+        <div class="var-rail-head">
+          <h2>Variations</h2>
+          <button type="button" class="chip-btn accent" id="btn-add-variation">＋</button>
+        </div>
+        <div id="variation-list" class="var-rail"></div>
+      </section>
+      <section class="dish-actions">
+        <button type="button" class="action keep" id="btn-keep">Keep</button>
+        <button type="button" class="action discard" id="btn-discard">Discard</button>
+      </section>
+    </main>
+
+    <!-- KEPT plates -->
+    <main id="view-kept" class="view hidden">
+      <button type="button" class="back-btn" id="btn-back-from-kept">← Locker</button>
+      <div id="kept-list" class="kept-rail"></div>
+      <button type="button" class="chip-btn" id="btn-export" style="margin:1rem">Download JSON</button>
+    </main>
+
+    <!-- ART GALLERY: present vs missing -->
+    <main id="view-gallery" class="view hidden">
+      <button type="button" class="back-btn" id="btn-back-from-gallery">← Locker</button>
+      <div class="gallery-tabs">
+        <button type="button" class="family-tab active" data-gal="have" id="gal-have">Painted</button>
+        <button type="button" class="family-tab" data-gal="miss" id="gal-miss">Missing</button>
+      </div>
+      <div id="gallery-grid" class="ing-grid gallery-grid"></div>
+    </main>
+  </div>
+
+  <dialog id="detail-dialog">
+    <form method="dialog" class="dialog-card visual-detail">
+      <div id="detail-body"></div>
+      <menu>
+        <button value="cancel" class="chip-btn">Close</button>
+        <button value="toggle" class="chip-btn accent" id="detail-toggle">Add</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <dialog id="meters-dialog">
+    <form method="dialog" class="dialog-card">
+      <h2 id="meters-dialog-title">Meters</h2>
+      <div id="meters-breakdown" class="stars-breakdown"></div>
+      <menu>
+        <button value="ok" class="chip-btn accent">Done</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <dialog id="variation-dialog">
+    <form method="dialog" class="dialog-card">
+      <h2>Swap on the plate</h2>
+      <div id="variation-options" class="variation-options visual-opts"></div>
+      <menu>
+        <button value="cancel" class="chip-btn">Cancel</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <script src="js/config.js"></script>
+  <script src="js/stars.js"></script>
+  <script src="js/process.js"></script>
+  <script src="js/sync.js"></script>
+  <script src="js/drive-save.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

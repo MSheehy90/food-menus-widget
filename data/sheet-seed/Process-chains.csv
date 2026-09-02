@@ -1,0 +1,19 @@
+id,name,output,input_ids,input_names,station,process_days,shelf_before,shelf_after,star_roles,updatedAt
+wheat_milling,Mill wheat → flour,Wheat flour,,Wheat grain,,0,,,,2026-09-02T00:00:00.000Z
+rice_milling,Mill paddy → edible rice,Milled rice,,Paddy rice,,0,,,,2026-09-02T00:00:00.000Z
+milk_to_cheese,Cow milk → cheese + whey,Cheese,,Cow milk,,1,,,,2026-09-02T00:00:00.000Z
+rice_flour,Grind rice → rice flour,Rice flour,,Milled rice,,0,,,,2026-09-02T00:00:00.000Z
+rice_noodles,Rice flour → fresh rice noodles,Rice noodles,,Rice flour · Water · Salt,,0,,,,2026-09-02T00:00:00.000Z
+ramen_noodles,Wheat flour → fresh ramen noodles,Ramen noodles,,Wheat flour · Water · Salt · Kansui salts,,0,,,,2026-09-02T00:00:00.000Z
+mung_sprouts,Mung beans → bean sprouts,Mung bean sprouts,,Mung beans · Water,,5,,,,2026-09-02T00:00:00.000Z
+rice_koji,Rice → rice koji,Rice koji,,Milled rice · Koji starter · Water,,2,,,,2026-09-02T00:00:00.000Z
+miso,Soybeans + rice koji → miso,Miso,,Soybeans · Rice koji · Salt · Water,,180,,,,2026-09-02T00:00:00.000Z
+soy_sauce,Soybeans + wheat → soy sauce,Soy sauce,,Soybeans · Wheat grain · Salt · Water · Koji starter,,240,,,,2026-09-02T00:00:00.000Z
+beef_broth,Cattle bones → beef pho broth,Beef broth,,Cattle bones · Water · Onion · Ginger · Star anise · Coriander seed · Fennel seed · Cinnamon · Cloves · Fish sauce · Sugar · Salt,,1,,,,2026-09-02T00:00:00.000Z
+chicken_broth,Chicken bones → chicken pho broth,Chicken broth,,Chickens bones · Water · Onion · Ginger · Star anise · Coriander seed · Fennel seed · Cinnamon · Cloves · Fish sauce · Sugar · Salt,,1,,,,2026-09-02T00:00:00.000Z
+pork_broth,Pig bones → ramen pork broth,Pork broth,,Pigs bones · Water · Onion · Ginger · Garlic · Scallion · Salt,,1,,,,2026-09-02T00:00:00.000Z
+nori,Seaweed → nori,Nori,,Seaweed,,1,,,,2026-09-02T00:00:00.000Z
+menma,Bamboo shoots → menma,Menma,,Bamboo shoots · Salt · Water,,14,,,,2026-09-02T00:00:00.000Z
+chocolate,Cocoa beans → chocolate,Chocolate,,Cocoa beans · Sugar · Cow milk,,1,,,,2026-09-02T00:00:00.000Z
+chashu,Pork belly → chashu,Chashu,,Pork belly · Soy sauce · Sugar · Ginger · Garlic · Water,,1,,,,2026-09-02T00:00:00.000Z
+dehydrate_ramen_noodles,Dehydrator + fresh ramen → dehydrated ramen,Dehydrated ramen noodles,,Ramen noodles · Dehydrator,Dehydrator,1,3,180,dehydratedCarb,2026-09-02T00:00:00.000Z

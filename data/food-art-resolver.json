@@ -1,0 +1,684 @@
+{
+  "emojiOnly": [
+    "Chocolate"
+  ],
+  "exact": {
+    "Onion": "assets/ingredients/1_supply_onion.png",
+    "Scallion": "assets/ingredients/1_supply_green_onions.png",
+    "Carrots": "assets/ingredients/1_supply_carrots.png",
+    "Cabbage": "assets/ingredients/1_supply_cabbage.png",
+    "Mushrooms": "assets/ingredients/1_supply_mushrooms.png",
+    "Wheat flour": "assets/ingredients/1_supply_flour_sack.png",
+    "Wheat grain": "assets/ingredients/1_supply_wheat_stalks.png",
+    "Apples": "assets/ingredients/1_supply_apple.png",
+    "Tomatoes": "assets/ingredients/1_supply_tomatoes.png",
+    "Potatoes": "assets/ingredients/1_supply_potato.png",
+    "Garlic": "assets/ingredients/1_supply_garlic.png",
+    "Basil": "assets/ingredients/1_supply_herbs.png",
+    "Thai basil": "assets/ingredients/1_supply_herbs.png",
+    "Cilantro": "assets/ingredients/1_supply_herbs.png",
+    "Nori": "assets/ingredients/1_supply_nori.png",
+    "Spinach": "assets/ingredients/1_supply_spinach.png",
+    "Bok choy": "assets/ingredients/1_supply_bok_choy.png",
+    "Radishes": "assets/ingredients/1_supply_radishes.png",
+    "Radish": "assets/ingredients/1_supply_radishes.png",
+    "Milled rice": "assets/ingredients/1_supply_rice_bowl.png",
+    "White rice": "assets/ingredients/1_supply_rice_bowl.png",
+    "Rice": "assets/ingredients/1_supply_rice_bowl.png",
+    "Ration bricks": "assets/ingredients/1_supply_ration_bricks.png",
+    "Eggs": "assets/ingredients/1_supply_brown_speckled_eggs.png",
+    "Shrimp": "assets/ingredients/1_supply_cooked_shrimp.png",
+    "Soybeans": "assets/ingredients/1_supply_soybeans_pile.png",
+    "Corn": "assets/ingredients/1_supply_ear_of_corn.png",
+    "Paddy rice": "assets/ingredients/1_supply_rice_stalk_bundle.png",
+    "Rice noodles": "assets/ingredients/1_supply_dried_rice_noodle_nest.png",
+    "Ramen noodles": "assets/ingredients/1_supply_cooked_noodles_mound.png",
+    "Beef broth": "assets/ingredients/1_supply_soup_broth_bowl.png",
+    "Pork broth": "assets/ingredients/1_supply_soup_broth_bowl.png",
+    "Chicken broth": "assets/ingredients/1_supply_soup_broth_bowl.png",
+    "White wine": "assets/ingredients/1_supply_white_wine_bottle.png",
+    "Ginger": "assets/ingredients/1_supply_ginger.png",
+    "Mung bean sprouts": "assets/ingredients/1_supply_mung_bean_sprouts.png",
+    "Hydroponic barley sprouts": "assets/ingredients/1_supply_mung_bean_sprouts.png",
+    "Mung beans": "assets/ingredients/1_supply_dried_beans.png",
+    "Chile pepper": "assets/ingredients/1_supply_chile_pepper.png",
+    "Beef ribeye": "assets/ingredients/1_supply_ribeye.png",
+    "Beef tenderloin": "assets/ingredients/1_supply_steak.png",
+    "Beef strip": "assets/ingredients/1_supply_steak.png",
+    "Beef sirloin": "assets/ingredients/1_supply_steak.png",
+    "Beef brisket": "assets/ingredients/1_supply_brisket.png",
+    "Beef short ribs": "assets/ingredients/1_supply_ribs.png",
+    "Beef stew trim": "assets/ingredients/1_supply_meat_chunks.png",
+    "Beef trim": "assets/ingredients/1_supply_meat_scraps.png",
+    "Ground beef": "assets/ingredients/1_supply_ground_beef.png",
+    "Ground pork": "assets/ingredients/1_supply_ground_pork.png",
+    "Ground lamb": "assets/ingredients/1_supply_ground_lamb.png",
+    "Ground goat": "assets/ingredients/1_supply_ground_goat.png",
+    "Ground sheep": "assets/ingredients/1_supply_ground_sheep.png",
+    "Ground chicken": "assets/ingredients/1_supply_ground_chicken.png",
+    "Chashu": "assets/ingredients/1_supply_chashu_pork.png",
+    "Bacon": "assets/ingredients/1_supply_bacon_slab.png",
+    "Pork belly": "assets/ingredients/1_supply_bacon_slab.png",
+    "Lamb loin": "assets/ingredients/1_supply_lamb_chops.png",
+    "Lamb rack/ribs": "assets/ingredients/1_supply_lamb_chops.png",
+    "Lamb leg": "assets/ingredients/1_supply_lamb_chops.png",
+    "Pork spare ribs": "assets/ingredients/1_supply_ribs.png",
+    "Pork back ribs": "assets/ingredients/1_supply_ribs.png",
+    "Raw sheep fleece": "assets/ingredients/1_supply_sheep_wool.png",
+    "Clean sheep wool": "assets/ingredients/1_supply_sheep_wool.png",
+    "Salt": "assets/ingredients/1_supply_salt.png",
+    "Water": "assets/ingredients/1_supply_water-pitcher.png",
+    "Flies": "assets/ingredients/1_supply_housefly.png",
+    "Bees": "assets/ingredients/1_supply_honeybee.png",
+    "Dates": "assets/ingredients/1_supply_dates.png",
+    "Cloves": "assets/ingredients/1_supply_cloves.png",
+    "Coconut": "assets/ingredients/1_supply_coconut.png",
+    "Agave": "assets/ingredients/1_supply_agave.png",
+    "Banana": "assets/ingredients/1_supply_bananas.png",
+    "Figs": "assets/ingredients/1_supply_figs.png",
+    "Rosemary": "assets/ingredients/1_supply_rosemary.png",
+    "Peanuts": "assets/ingredients/1_supply_peanuts.png",
+    "Thyme": "assets/ingredients/1_supply_thyme.png",
+    "Bass": "assets/ingredients/1_supply_bass.png",
+    "Bluegill": "assets/ingredients/1_supply_sunfish.png",
+    "Clams": "assets/ingredients/1_supply_clams.png",
+    "Crab": "assets/ingredients/1_supply_red-crab.png",
+    "Rats": "assets/ingredients/1_supply_rat.png",
+    "Roe": "assets/ingredients/1_supply_orange-roe.png",
+    "Caviar": "assets/ingredients/1_supply_caviar.png",
+    "Pepperoni": "assets/ingredients/1_supply_pepperoni.png",
+    "Prosciutto": "assets/ingredients/1_supply_prosciutto.png",
+    "Salami": "assets/ingredients/1_supply_salami.png",
+    "Sausages": "assets/ingredients/1_supply_sausages.png",
+    "Tuna": "assets/ingredients/1_supply_tuna-steak.png",
+    "Tofu": "assets/ingredients/1_supply_tofu.png",
+    "Sturgeon": "assets/ingredients/1_supply_sturgeon.png",
+    "Worms": "assets/ingredients/1_supply_earthworms.png",
+    "Taro": "assets/ingredients/1_supply_taro.png",
+    "Coconut Oil": "assets/ingredients/1_supply_coconut-oil.png",
+    "Olives": "assets/ingredients/1_supply_olives.png",
+    "Bell Pepper": "assets/ingredients/1_supply_red-bell-pepper.png",
+    "Broccoli": "assets/ingredients/1_supply_broccoli.png",
+    "Fennel": "assets/ingredients/1_supply_fennel.png",
+    "Peas": "assets/ingredients/1_supply_peas.png",
+    "Strawberries": "assets/ingredients/1_supply_strawberries.png",
+    "Avocado": "assets/ingredients/1_supply_avocado.png",
+    "Oranges": "assets/ingredients/1_supply_oranges.png",
+    "Pears": "assets/ingredients/1_supply_pears.png",
+    "Miso": "assets/ingredients/1_supply_miso.png",
+    "Soy Sauce": "assets/ingredients/1_supply_soy-sauce.png",
+    "Menma": "assets/ingredients/1_supply_menma.png",
+    "Cacao": "assets/ingredients/1_supply_cacao-pods.png",
+    "Lemon": "assets/ingredients/1_supply_lemons.png",
+    "Lime": "assets/ingredients/1_supply_limes.png",
+    "Grapes": "assets/ingredients/1_supply_grapes.png",
+    "Blueberries": "assets/ingredients/1_supply_blueberries.png",
+    "Butter": "assets/ingredients/ingredient_butter_stick.png",
+    "Cheese": "assets/ingredients/ingredient_cheese_block.png",
+    "Salmon fillet": "assets/ingredients/ingredient_salmon_fillet_slice.png",
+    "Salmon": "assets/ingredients/ingredient_salmon_fillet_slice.png",
+    "Cow milk": "assets/ingredients/ingredient_cream_carton.png",
+    "Goat milk": "assets/ingredients/ingredient_cream_carton.png",
+    "Yogurt": "assets/ingredients/ingredient_cream_carton.png",
+    "Bread": "assets/ingredients/ingredient_bread_loaf.png",
+    "Honey": "assets/ingredients/ingredient_preserve_jar.png",
+    "Lobster": "assets/ingredients/ingredient_blue_crab.png"
+  },
+  "rules": [
+    {
+      "pattern": "broth|stock|soup",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_soup_broth_bowl.png"
+    },
+    {
+      "pattern": "ration\\s*brick|granola|energy\\s*bar",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_ration_bricks.png"
+    },
+    {
+      "pattern": "white\\s*wine|wine\\s*bottle",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_white_wine_bottle.png"
+    },
+    {
+      "pattern": "ribeye|tomahawk",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_ribeye.png"
+    },
+    {
+      "pattern": "t[\\s-]?bone",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_tbone.png"
+    },
+    {
+      "pattern": "brisket",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_brisket.png"
+    },
+    {
+      "pattern": "short\\s*ribs|spare\\s*ribs|back\\s*ribs|rack\\/ribs|\\bribs\\b",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_ribs.png"
+    },
+    {
+      "pattern": "ground\\s*beef",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_ground_beef.png"
+    },
+    {
+      "pattern": "ground\\s*pork",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_ground_pork.png"
+    },
+    {
+      "pattern": "ground\\s*lamb",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_ground_lamb.png"
+    },
+    {
+      "pattern": "ground\\s*goat",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_ground_goat.png"
+    },
+    {
+      "pattern": "ground\\s*sheep",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_ground_sheep.png"
+    },
+    {
+      "pattern": "ground\\s*chicken",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_ground_chicken.png"
+    },
+    {
+      "pattern": "lamb|mutton|goat",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_lamb_chops.png"
+    },
+    {
+      "pattern": "stew\\s*trim|meat\\s*chunks|sausage\\s*trim",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_meat_chunks.png"
+    },
+    {
+      "pattern": "trim|scraps|offcuts",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_meat_scraps.png"
+    },
+    {
+      "pattern": "chashu",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_chashu_pork.png"
+    },
+    {
+      "pattern": "bacon|pork\\s*belly",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_bacon_slab.png"
+    },
+    {
+      "pattern": "pepperoni",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_pepperoni.png"
+    },
+    {
+      "pattern": "prosciutto",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_prosciutto.png"
+    },
+    {
+      "pattern": "salami",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_salami.png"
+    },
+    {
+      "pattern": "\\bsausages?\\b",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_sausages.png"
+    },
+    {
+      "pattern": "tuna",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_tuna-steak.png"
+    },
+    {
+      "pattern": "tofu",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_tofu.png"
+    },
+    {
+      "pattern": "sturgeon",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_sturgeon.png"
+    },
+    {
+      "pattern": "\\bbass\\b",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_bass.png"
+    },
+    {
+      "pattern": "bluegill|sunfish",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_sunfish.png"
+    },
+    {
+      "pattern": "caviar",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_caviar.png"
+    },
+    {
+      "pattern": "\\broe\\b",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_orange-roe.png"
+    },
+    {
+      "pattern": "king\\s*crab",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_king-crab-leg.png"
+    },
+    {
+      "pattern": "\\bcrabs?\\b",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_red-crab.png"
+    },
+    {
+      "pattern": "mussel",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_mussel.png"
+    },
+    {
+      "pattern": "clams?",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_clams.png"
+    },
+    {
+      "pattern": "\\brats?\\b",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_rat.png"
+    },
+    {
+      "pattern": "beef|steak|chuck|sirloin|round|flank|skirt|shank|tenderloin|strip",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_steak.png"
+    },
+    {
+      "pattern": "pork|ham",
+      "flags": "i",
+      "url": "assets/dishes/2_23_r4c2_pork_cutlet_set.png"
+    },
+    {
+      "pattern": "chicken",
+      "flags": "i",
+      "url": "assets/ingredients/ingredient_raw_poultry_bird.png"
+    },
+    {
+      "pattern": "fish|fillet|trout|tilapia|salmon",
+      "flags": "i",
+      "url": "assets/ingredients/ingredient_fish_fillet.png"
+    },
+    {
+      "pattern": "shrimp|prawn",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_cooked_shrimp.png"
+    },
+    {
+      "pattern": "bone",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_bones.png"
+    },
+    {
+      "pattern": "hide|skin|pelt",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_hide.png"
+    },
+    {
+      "pattern": "wool|fleece",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_sheep_wool.png"
+    },
+    {
+      "pattern": "milk|whey|cream|yogurt",
+      "flags": "i",
+      "url": "assets/ingredients/ingredient_cream_carton.png"
+    },
+    {
+      "pattern": "egg",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_brown_speckled_eggs.png"
+    },
+    {
+      "pattern": "ramen\\s*noodle",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_cooked_noodles_mound.png"
+    },
+    {
+      "pattern": "rice\\s*noodle",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_dried_rice_noodle_nest.png"
+    },
+    {
+      "pattern": "noodle|ramen",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_cooked_noodles_mound.png"
+    },
+    {
+      "pattern": "paddy\\s*rice",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_rice_stalk_bundle.png"
+    },
+    {
+      "pattern": "rice",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_rice_bowl.png"
+    },
+    {
+      "pattern": "soy\\s*sauce",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_soy-sauce.png"
+    },
+    {
+      "pattern": "soybean",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_soybeans_pile.png"
+    },
+    {
+      "pattern": "miso",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_miso.png"
+    },
+    {
+      "pattern": "menma",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_menma.png"
+    },
+    {
+      "pattern": "corn|maize",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_ear_of_corn.png"
+    },
+    {
+      "pattern": "ginger",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_ginger.png"
+    },
+    {
+      "pattern": "mung\\s*bean\\s*sprouts?|bean\\s*sprouts?",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_mung_bean_sprouts.png"
+    },
+    {
+      "pattern": "hydroponic\\s*barley\\s*sprouts?|barley\\s*sprouts?",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_mung_bean_sprouts.png"
+    },
+    {
+      "pattern": "mung\\s*beans?|dried\\s*beans?",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_dried_beans.png"
+    },
+    {
+      "pattern": "chile\\s*pepper|chili\\s*pepper|chilli\\s*pepper|\\bchiles?\\b|\\bchilies\\b|\\bchillies\\b",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_chile_pepper.png"
+    },
+    {
+      "pattern": "bell\\s*pepper",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_red-bell-pepper.png"
+    },
+    {
+      "pattern": "potato",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_potato.png"
+    },
+    {
+      "pattern": "tomato",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_tomatoes.png"
+    },
+    {
+      "pattern": "garlic",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_garlic.png"
+    },
+    {
+      "pattern": "scallion|green\\s*onion|spring\\s*onion",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_green_onions.png"
+    },
+    {
+      "pattern": "onion",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_onion.png"
+    },
+    {
+      "pattern": "rosemary",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_rosemary.png"
+    },
+    {
+      "pattern": "thyme",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_thyme.png"
+    },
+    {
+      "pattern": "basil|mint",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_herbs.png"
+    },
+    {
+      "pattern": "cilantro|coriander|parsley",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_herbs.png"
+    },
+    {
+      "pattern": "nori|seaweed",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_nori.png"
+    },
+    {
+      "pattern": "spinach",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_spinach.png"
+    },
+    {
+      "pattern": "bok\\s*choy|pak\\s*choi",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_bok_choy.png"
+    },
+    {
+      "pattern": "radish",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_radishes.png"
+    },
+    {
+      "pattern": "carrot",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_carrots.png"
+    },
+    {
+      "pattern": "broccoli",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_broccoli.png"
+    },
+    {
+      "pattern": "fennel",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_fennel.png"
+    },
+    {
+      "pattern": "\\bpeas?\\b",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_peas.png"
+    },
+    {
+      "pattern": "strawberr",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_strawberries.png"
+    },
+    {
+      "pattern": "avocado",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_avocado.png"
+    },
+    {
+      "pattern": "olives?",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_olives.png"
+    },
+    {
+      "pattern": "oranges?",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_oranges.png"
+    },
+    {
+      "pattern": "pears?",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_pears.png"
+    },
+    {
+      "pattern": "lemon",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_lemons.png"
+    },
+    {
+      "pattern": "lime",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_limes.png"
+    },
+    {
+      "pattern": "grapes?",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_grapes.png"
+    },
+    {
+      "pattern": "blueberr",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_blueberries.png"
+    },
+    {
+      "pattern": "cacao|cocoa",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_cacao-pods.png"
+    },
+    {
+      "pattern": "coconut\\s*oil",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_coconut-oil.png"
+    },
+    {
+      "pattern": "olive\\s*oil",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_olive-oil.png"
+    },
+    {
+      "pattern": "coconut",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_coconut.png"
+    },
+    {
+      "pattern": "dates?",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_dates.png"
+    },
+    {
+      "pattern": "cloves?",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_cloves.png"
+    },
+    {
+      "pattern": "agave",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_agave.png"
+    },
+    {
+      "pattern": "bananas?",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_bananas.png"
+    },
+    {
+      "pattern": "figs?",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_figs.png"
+    },
+    {
+      "pattern": "peanuts?",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_peanuts.png"
+    },
+    {
+      "pattern": "taro",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_taro.png"
+    },
+    {
+      "pattern": "worms?|earthworm",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_earthworms.png"
+    },
+    {
+      "pattern": "housefly|flies",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_housefly.png"
+    },
+    {
+      "pattern": "honeybee|bees",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_honeybee.png"
+    },
+    {
+      "pattern": "\\bsalt\\b",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_salt.png"
+    },
+    {
+      "pattern": "\\bwater\\b",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_water-pitcher.png"
+    },
+    {
+      "pattern": "flour",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_flour_sack.png"
+    },
+    {
+      "pattern": "wheat|grain|barley|oat",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_wheat_stalks.png"
+    },
+    {
+      "pattern": "bread",
+      "flags": "i",
+      "url": "assets/ingredients/ingredient_sliced_bread.png"
+    },
+    {
+      "pattern": "cheese",
+      "flags": "i",
+      "url": "assets/ingredients/ingredient_cheese_block.png"
+    },
+    {
+      "pattern": "butter",
+      "flags": "i",
+      "url": "assets/ingredients/ingredient_butter_stick.png"
+    },
+    {
+      "pattern": "apple",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_apple.png"
+    },
+    {
+      "pattern": "mushroom",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_mushrooms.png"
+    },
+    {
+      "pattern": "cabbage",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_cabbage.png"
+    },
+    {
+      "pattern": "greens|kale",
+      "flags": "i",
+      "url": "assets/ingredients/1_supply_spinach.png"
+    }
+  ]
+}

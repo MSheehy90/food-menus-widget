@@ -1,0 +1,24 @@
+Snowpiercer dish star scoring — locked 2026-09-02 by Melinda,,,
+Stars add from ingredients on the basic dish and on each variation. Half stars count.,,,
+,,,
+Ingredient or family,Stars,Notes,Worked example (ramen)
+Fresh noodles,1,Fresh processed carb (fresh ramen / rice noodles / pasta),Fresh ramen noodles
+Dehydrated noodles,0.5,Shelf / dried version of that carb,Dehydrated ramen noodles
+Processed protein (chashu),1,Process-recipe output (braised/cured/smoked). Raw butchered cuts do NOT get this.,Chashu
+Pork broth,0.5,Simple bone broth (pork / beef / chicken pho broth),Pork broth
+Miso broth,1,Fermented / complex broth,Miso broth
+Processed chili oil with black garlic,1,Processed condiment that is itself a process-chain output,Chili oil with black garlic
+Scallion and herbs,0.5,Fresh garnish,Scallion
+½ boiled egg,,,
+,,,
+,,,
+,,,
+Worked examples,Stars,Breakdown,
+Fresh ramen + chashu + pork broth + scallion,3,1 + 1 + 0.5 + 0.5,LOCKED EXAMPLE
+Fresh ramen + chashu + miso broth + chili oil with black garlic + scallion,4.5,1 + 1 + 1 + 1 + 0.5,
+Dehydrated noodles + pork broth + scallion,1.5,0.5 + 0.5 + 0.5,
+,,,
+Rules,Value,,
+Illegal combo (ramen noodles outside ramen-style; rice noodles outside pho-style),blocked not scored,,
+Raw butchered cut (brisket steak etc.),0 processed-protein stars unless it is a process-recipe output,,
+Show running total on basic dish and each variation,,,

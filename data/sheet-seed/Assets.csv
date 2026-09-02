@@ -1,0 +1,199 @@
+id,item,art_url,updatedAt
+beef-brisket,Beef Brisket,assets/ingredients/1_supply_brisket.png,2026-09-02T00:00:00.000Z
+beef-chuck-roast,Beef Chuck Roast,assets/ingredients/1_supply_steak.png,2026-09-02T00:00:00.000Z
+beef-flank,Beef Flank,assets/ingredients/1_supply_steak.png,2026-09-02T00:00:00.000Z
+beef-ribeye,Beef Ribeye,assets/ingredients/1_supply_ribeye.png,2026-09-02T00:00:00.000Z
+beef-round,Beef Round,assets/ingredients/1_supply_steak.png,2026-09-02T00:00:00.000Z
+beef-shank,Beef Shank,assets/ingredients/1_supply_steak.png,2026-09-02T00:00:00.000Z
+beef-short-ribs,Beef Short Ribs,assets/ingredients/1_supply_ribs.png,2026-09-02T00:00:00.000Z
+beef-sirloin,Beef Sirloin,assets/ingredients/1_supply_steak.png,2026-09-02T00:00:00.000Z
+beef-skirt-hanger,Beef Skirt/Hanger,assets/ingredients/1_supply_steak.png,2026-09-02T00:00:00.000Z
+beef-small-intestine,Beef Small Intestine,assets/ingredients/1_supply_steak.png,2026-09-02T00:00:00.000Z
+beef-stew-trim,Beef Stew Trim,assets/ingredients/1_supply_meat_chunks.png,2026-09-02T00:00:00.000Z
+beef-strip,Beef Strip,assets/ingredients/1_supply_steak.png,2026-09-02T00:00:00.000Z
+beef-tenderloin,Beef Tenderloin,assets/ingredients/1_supply_steak.png,2026-09-02T00:00:00.000Z
+beef-tongue,Beef Tongue,assets/ingredients/1_supply_steak.png,2026-09-02T00:00:00.000Z
+beef-trim,Beef Trim,assets/ingredients/1_supply_meat_scraps.png,2026-09-02T00:00:00.000Z
+chicken-breast,Chicken Breast,assets/ingredients/ingredient_raw_poultry_bird.png,2026-09-02T00:00:00.000Z
+chicken-drumstick,Chicken Drumstick,assets/ingredients/ingredient_raw_poultry_bird.png,2026-09-02T00:00:00.000Z
+chicken-thigh,Chicken Thigh,assets/ingredients/ingredient_raw_poultry_bird.png,2026-09-02T00:00:00.000Z
+chicken-trim,Chicken Trim,assets/ingredients/1_supply_meat_scraps.png,2026-09-02T00:00:00.000Z
+chicken-wings,Chicken Wings,assets/ingredients/ingredient_raw_poultry_bird.png,2026-09-02T00:00:00.000Z
+goat-leg,Goat Leg,assets/ingredients/1_supply_lamb_chops.png,2026-09-02T00:00:00.000Z
+goat-loin,Goat Loin,assets/ingredients/1_supply_lamb_chops.png,2026-09-02T00:00:00.000Z
+goat-ribs,Goat Ribs,assets/ingredients/1_supply_ribs.png,2026-09-02T00:00:00.000Z
+goat-shoulder,Goat Shoulder,assets/ingredients/1_supply_lamb_chops.png,2026-09-02T00:00:00.000Z
+goat-stew-trim,Goat Stew Trim,assets/ingredients/1_supply_lamb_chops.png,2026-09-02T00:00:00.000Z
+ground-beef,Ground Beef,assets/ingredients/1_supply_ground_beef.png,2026-09-02T00:00:00.000Z
+lamb-leg,Lamb Leg,assets/ingredients/1_supply_lamb_chops.png,2026-09-02T00:00:00.000Z
+lamb-loin,Lamb Loin,assets/ingredients/1_supply_lamb_chops.png,2026-09-02T00:00:00.000Z
+lamb-rack-ribs,Lamb Rack/Ribs,assets/ingredients/1_supply_lamb_chops.png,2026-09-02T00:00:00.000Z
+lamb-shoulder,Lamb Shoulder,assets/ingredients/1_supply_lamb_chops.png,2026-09-02T00:00:00.000Z
+lamb-stew-trim,Lamb Stew Trim,assets/ingredients/1_supply_lamb_chops.png,2026-09-02T00:00:00.000Z
+pork-back-ribs,Pork Back Ribs,assets/ingredients/1_supply_ribs.png,2026-09-02T00:00:00.000Z
+pork-belly,Pork Belly,assets/ingredients/1_supply_bacon_slab.png,2026-09-02T00:00:00.000Z
+pork-boston-butt,Pork Boston Butt,assets/dishes/2_23_r4c2_pork_cutlet_set.png,2026-09-02T00:00:00.000Z
+pork-ham,Pork Ham,assets/dishes/2_23_r4c2_pork_cutlet_set.png,2026-09-02T00:00:00.000Z
+pork-loin-chops,Pork Loin/Chops,assets/dishes/2_23_r4c2_pork_cutlet_set.png,2026-09-02T00:00:00.000Z
+pork-picnic-shoulder,Pork Picnic Shoulder,assets/dishes/2_23_r4c2_pork_cutlet_set.png,2026-09-02T00:00:00.000Z
+pork-sausage-trim,Pork Sausage Trim,assets/ingredients/1_supply_meat_chunks.png,2026-09-02T00:00:00.000Z
+pork-spare-ribs,Pork Spare Ribs,assets/ingredients/1_supply_ribs.png,2026-09-02T00:00:00.000Z
+pork-tenderloin,Pork Tenderloin,assets/ingredients/1_supply_steak.png,2026-09-02T00:00:00.000Z
+cattle-bones,Cattle Bones,assets/ingredients/1_supply_bones.png,2026-09-02T00:00:00.000Z
+chickens-bones,Chickens Bones,assets/ingredients/ingredient_raw_poultry_bird.png,2026-09-02T00:00:00.000Z
+pigs-bones,Pigs Bones,assets/ingredients/1_supply_bones.png,2026-09-02T00:00:00.000Z
+pigs-fat,Pigs Fat,MISSING,2026-09-02T00:00:00.000Z
+fish-sauce,Fish Sauce,assets/ingredients/ingredient_fish_fillet.png,2026-09-02T00:00:00.000Z
+food-grade-calcium-hydroxide,Food-grade Calcium Hydroxide,MISSING,2026-09-02T00:00:00.000Z
+kansui-salts,Kansui Salts,MISSING,2026-09-02T00:00:00.000Z
+koji-starter,Koji Starter,MISSING,2026-09-02T00:00:00.000Z
+salt,Salt,assets/ingredients/1_supply_salt.png,2026-09-02T00:00:00.000Z
+cow-milk,Cow Milk,assets/ingredients/ingredient_cream_carton.png,2026-09-02T00:00:00.000Z
+eggs,Eggs,assets/ingredients/1_supply_brown_speckled_eggs.png,2026-09-02T00:00:00.000Z
+flies,Flies,assets/ingredients/1_supply_housefly.png,2026-09-02T00:00:00.000Z
+goat-milk,Goat Milk,assets/ingredients/ingredient_cream_carton.png,2026-09-02T00:00:00.000Z
+honey,Honey,assets/ingredients/ingredient_preserve_jar.png,2026-09-02T00:00:00.000Z
+lobster,Lobster,assets/ingredients/ingredient_blue_crab.png,2026-09-02T00:00:00.000Z
+maggots,Maggots,MISSING,2026-09-02T00:00:00.000Z
+salmon,Salmon,assets/ingredients/ingredient_salmon_fillet_slice.png,2026-09-02T00:00:00.000Z
+shrimp,Shrimp,assets/ingredients/1_supply_cooked_shrimp.png,2026-09-02T00:00:00.000Z
+beef-broth,Beef Broth,assets/ingredients/1_supply_soup_broth_bowl.png,2026-09-02T00:00:00.000Z
+butter,Butter,assets/ingredients/ingredient_butter_stick.png,2026-09-02T00:00:00.000Z
+chashu,Chashu,assets/ingredients/1_supply_chashu_pork.png,2026-09-02T00:00:00.000Z
+cheese,Cheese,assets/ingredients/ingredient_cheese_block.png,2026-09-02T00:00:00.000Z
+chicken-broth,Chicken Broth,assets/ingredients/1_supply_soup_broth_bowl.png,2026-09-02T00:00:00.000Z
+chocolate,Chocolate,MISSING,2026-09-02T00:00:00.000Z
+cocoa-beans,Cocoa Beans,assets/ingredients/1_supply_cacao-pods.png,2026-09-02T00:00:00.000Z
+corn-tortillas,Corn Tortillas,assets/ingredients/1_supply_ear_of_corn.png,2026-09-02T00:00:00.000Z
+flour-tortillas,Flour Tortillas,assets/ingredients/1_supply_flour_sack.png,2026-09-02T00:00:00.000Z
+menma,Menma,assets/ingredients/1_supply_menma.png,2026-09-02T00:00:00.000Z
+milled-rice,Milled Rice,assets/ingredients/1_supply_rice_bowl.png,2026-09-02T00:00:00.000Z
+miso,Miso,assets/ingredients/1_supply_miso.png,2026-09-02T00:00:00.000Z
+mung-bean-sprouts,Mung Bean Sprouts,assets/ingredients/1_supply_mung_bean_sprouts.png,2026-09-02T00:00:00.000Z
+nori,Nori,assets/ingredients/1_supply_nori.png,2026-09-02T00:00:00.000Z
+pork-broth,Pork Broth,assets/ingredients/1_supply_soup_broth_bowl.png,2026-09-02T00:00:00.000Z
+ramen-noodles,Ramen Noodles,assets/ingredients/1_supply_cooked_noodles_mound.png,2026-09-02T00:00:00.000Z
+rendered-pork-fat,Rendered Pork Fat,assets/dishes/2_23_r4c2_pork_cutlet_set.png,2026-09-02T00:00:00.000Z
+rice-flour,Rice Flour,assets/ingredients/1_supply_rice_bowl.png,2026-09-02T00:00:00.000Z
+rice-koji,Rice Koji,assets/ingredients/1_supply_rice_bowl.png,2026-09-02T00:00:00.000Z
+rice-noodles,Rice Noodles,assets/ingredients/1_supply_dried_rice_noodle_nest.png,2026-09-02T00:00:00.000Z
+salmon-fillet,Salmon Fillet,assets/ingredients/ingredient_salmon_fillet_slice.png,2026-09-02T00:00:00.000Z
+soy-sauce,Soy Sauce,assets/ingredients/1_supply_soy-sauce.png,2026-09-02T00:00:00.000Z
+bread,Bread,assets/ingredients/ingredient_bread_loaf.png,2026-09-02T00:00:00.000Z
+dates,Dates,assets/ingredients/1_supply_dates.png,2026-09-02T00:00:00.000Z
+bamboo-shoots,Bamboo Shoots,MISSING,2026-09-02T00:00:00.000Z
+cloves,Cloves,assets/ingredients/1_supply_cloves.png,2026-09-02T00:00:00.000Z
+coconut,Coconut,assets/ingredients/1_supply_coconut.png,2026-09-02T00:00:00.000Z
+agave,Agave,assets/ingredients/1_supply_agave.png,2026-09-02T00:00:00.000Z
+avocado,Avocado,assets/ingredients/1_supply_avocado.png,2026-09-02T00:00:00.000Z
+cacao,Cacao,assets/ingredients/1_supply_cacao-pods.png,2026-09-02T00:00:00.000Z
+star-anise,Star Anise,MISSING,2026-09-02T00:00:00.000Z
+olives,Olives,assets/ingredients/1_supply_olives.png,2026-09-02T00:00:00.000Z
+banana,Banana,assets/ingredients/1_supply_bananas.png,2026-09-02T00:00:00.000Z
+figs,Figs,assets/ingredients/1_supply_figs.png,2026-09-02T00:00:00.000Z
+lemon,Lemon,assets/ingredients/1_supply_lemons.png,2026-09-02T00:00:00.000Z
+lime,Lime,assets/ingredients/1_supply_limes.png,2026-09-02T00:00:00.000Z
+oranges,Oranges,assets/ingredients/1_supply_oranges.png,2026-09-02T00:00:00.000Z
+pears,Pears,assets/ingredients/1_supply_pears.png,2026-09-02T00:00:00.000Z
+apples,Apples,assets/ingredients/1_supply_apple.png,2026-09-02T00:00:00.000Z
+coffee,Coffee,MISSING,2026-09-02T00:00:00.000Z
+grapes,Grapes,assets/ingredients/1_supply_grapes.png,2026-09-02T00:00:00.000Z
+blueberries,Blueberries,assets/ingredients/1_supply_blueberries.png,2026-09-02T00:00:00.000Z
+cinnamon,Cinnamon,MISSING,2026-09-02T00:00:00.000Z
+kale,Kale,assets/ingredients/1_supply_spinach.png,2026-09-02T00:00:00.000Z
+bell-pepper,Bell Pepper,assets/ingredients/1_supply_red-bell-pepper.png,2026-09-02T00:00:00.000Z
+broccoli,Broccoli,assets/ingredients/1_supply_broccoli.png,2026-09-02T00:00:00.000Z
+cherry-tomatoes,Cherry Tomatoes,assets/ingredients/1_supply_tomatoes.png,2026-09-02T00:00:00.000Z
+fennel,Fennel,assets/ingredients/1_supply_fennel.png,2026-09-02T00:00:00.000Z
+rosemary,Rosemary,assets/ingredients/1_supply_rosemary.png,2026-09-02T00:00:00.000Z
+basil,Basil,assets/ingredients/1_supply_herbs.png,2026-09-02T00:00:00.000Z
+bees,Bees,assets/ingredients/1_supply_honeybee.png,2026-09-02T00:00:00.000Z
+cabbage,Cabbage,assets/ingredients/1_supply_cabbage.png,2026-09-02T00:00:00.000Z
+chili-pepper,Chili Pepper,assets/ingredients/1_supply_chile_pepper.png,2026-09-02T00:00:00.000Z
+corn,Corn,assets/ingredients/1_supply_ear_of_corn.png,2026-09-02T00:00:00.000Z
+ginger,Ginger,assets/ingredients/1_supply_ginger.png,2026-09-02T00:00:00.000Z
+mung-beans,Mung Beans,assets/ingredients/1_supply_dried_beans.png,2026-09-02T00:00:00.000Z
+peas,Peas,assets/ingredients/1_supply_peas.png,2026-09-02T00:00:00.000Z
+potatoes,Potatoes,assets/ingredients/1_supply_potato.png,2026-09-02T00:00:00.000Z
+soybeans,Soybeans,assets/ingredients/1_supply_soybeans_pile.png,2026-09-02T00:00:00.000Z
+strawberries,Strawberries,assets/ingredients/1_supply_strawberries.png,2026-09-02T00:00:00.000Z
+cilantro,Cilantro,assets/ingredients/1_supply_herbs.png,2026-09-02T00:00:00.000Z
+coriander,Coriander,assets/ingredients/1_supply_herbs.png,2026-09-02T00:00:00.000Z
+peanuts,Peanuts,assets/ingredients/1_supply_peanuts.png,2026-09-02T00:00:00.000Z
+barley,Barley,assets/ingredients/1_supply_wheat_stalks.png,2026-09-02T00:00:00.000Z
+carrots,Carrots,assets/ingredients/1_supply_carrots.png,2026-09-02T00:00:00.000Z
+garlic,Garlic,assets/ingredients/1_supply_garlic.png,2026-09-02T00:00:00.000Z
+lettuce,Lettuce,MISSING,2026-09-02T00:00:00.000Z
+onion,Onion,assets/ingredients/1_supply_onion.png,2026-09-02T00:00:00.000Z
+rice,Rice,assets/ingredients/1_supply_rice_bowl.png,2026-09-02T00:00:00.000Z
+spinach,Spinach,assets/ingredients/1_supply_spinach.png,2026-09-02T00:00:00.000Z
+barley-grass,Barley Grass,assets/ingredients/1_supply_wheat_stalks.png,2026-09-02T00:00:00.000Z
+mushrooms,Mushrooms,assets/ingredients/1_supply_mushrooms.png,2026-09-02T00:00:00.000Z
+pumpkin,Pumpkin,MISSING,2026-09-02T00:00:00.000Z
+scallion,Scallion,assets/ingredients/1_supply_green_onions.png,2026-09-02T00:00:00.000Z
+seaweed,Seaweed,assets/ingredients/1_supply_nori.png,2026-09-02T00:00:00.000Z
+bass,Bass,assets/ingredients/1_supply_bass.png,2026-09-02T00:00:00.000Z
+bluegill,Bluegill,assets/ingredients/1_supply_sunfish.png,2026-09-02T00:00:00.000Z
+catfish,Catfish,assets/ingredients/ingredient_fish_fillet.png,2026-09-02T00:00:00.000Z
+clams,Clams,assets/ingredients/1_supply_clams.png,2026-09-02T00:00:00.000Z
+cod,Cod,MISSING,2026-09-02T00:00:00.000Z
+crab,Crab,assets/ingredients/1_supply_red-crab.png,2026-09-02T00:00:00.000Z
+rats,Rats,assets/ingredients/1_supply_rat.png,2026-09-02T00:00:00.000Z
+roe,Roe,assets/ingredients/1_supply_orange-roe.png,2026-09-02T00:00:00.000Z
+avocado-oil,Avocado Oil,assets/ingredients/1_supply_avocado.png,2026-09-02T00:00:00.000Z
+beef-jerky,Beef Jerky,assets/ingredients/1_supply_steak.png,2026-09-02T00:00:00.000Z
+caviar,Caviar,assets/ingredients/1_supply_caviar.png,2026-09-02T00:00:00.000Z
+coconut-oil,Coconut Oil,assets/ingredients/1_supply_coconut-oil.png,2026-09-02T00:00:00.000Z
+cream,Cream,assets/ingredients/ingredient_cream_carton.png,2026-09-02T00:00:00.000Z
+ham,Ham,assets/dishes/2_23_r4c2_pork_cutlet_set.png,2026-09-02T00:00:00.000Z
+ice-cream,Ice Cream,assets/ingredients/ingredient_cream_carton.png,2026-09-02T00:00:00.000Z
+pasta-noodles,Pasta Noodles,assets/ingredients/1_supply_cooked_noodles_mound.png,2026-09-02T00:00:00.000Z
+pepperoni,Pepperoni,assets/ingredients/1_supply_pepperoni.png,2026-09-02T00:00:00.000Z
+prosciutto,Prosciutto,assets/ingredients/1_supply_prosciutto.png,2026-09-02T00:00:00.000Z
+salami,Salami,assets/ingredients/1_supply_salami.png,2026-09-02T00:00:00.000Z
+sausages,Sausages,assets/ingredients/1_supply_sausages.png,2026-09-02T00:00:00.000Z
+sturgeon,Sturgeon,assets/ingredients/1_supply_sturgeon.png,2026-09-02T00:00:00.000Z
+sugar,Sugar,MISSING,2026-09-02T00:00:00.000Z
+sweet-potato,Sweet Potato,assets/ingredients/1_supply_potato.png,2026-09-02T00:00:00.000Z
+taro,Taro,assets/ingredients/1_supply_taro.png,2026-09-02T00:00:00.000Z
+thai-basil,Thai Basil,assets/ingredients/1_supply_herbs.png,2026-09-02T00:00:00.000Z
+thyme,Thyme,assets/ingredients/1_supply_thyme.png,2026-09-02T00:00:00.000Z
+tilapia,Tilapia,assets/ingredients/ingredient_fish_fillet.png,2026-09-02T00:00:00.000Z
+tofu,Tofu,assets/ingredients/1_supply_tofu.png,2026-09-02T00:00:00.000Z
+tomato-sauce,Tomato Sauce,assets/ingredients/1_supply_tomatoes.png,2026-09-02T00:00:00.000Z
+tomatoes,Tomatoes,assets/ingredients/1_supply_tomatoes.png,2026-09-02T00:00:00.000Z
+trout,Trout,assets/ingredients/ingredient_fish_fillet.png,2026-09-02T00:00:00.000Z
+tuna,Tuna,assets/ingredients/1_supply_tuna-steak.png,2026-09-02T00:00:00.000Z
+turmeric,Turmeric,MISSING,2026-09-02T00:00:00.000Z
+water,Water,assets/ingredients/1_supply_water-pitcher.png,2026-09-02T00:00:00.000Z
+wheat,Wheat,assets/ingredients/1_supply_wheat_stalks.png,2026-09-02T00:00:00.000Z
+wheat-flour,Wheat Flour,assets/ingredients/1_supply_flour_sack.png,2026-09-02T00:00:00.000Z
+whey,Whey,assets/ingredients/ingredient_cream_carton.png,2026-09-02T00:00:00.000Z
+white-wine,White Wine,assets/ingredients/1_supply_white_wine_bottle.png,2026-09-02T00:00:00.000Z
+worms,Worms,assets/ingredients/1_supply_earthworms.png,2026-09-02T00:00:00.000Z
+yogurt,Yogurt,assets/ingredients/ingredient_cream_carton.png,2026-09-02T00:00:00.000Z
+cattle,Cattle,MISSING,2026-09-02T00:00:00.000Z
+chickens,Chickens,assets/ingredients/ingredient_raw_poultry_bird.png,2026-09-02T00:00:00.000Z
+goats,Goats,assets/ingredients/1_supply_lamb_chops.png,2026-09-02T00:00:00.000Z
+pigs,Pigs,MISSING,2026-09-02T00:00:00.000Z
+sheep,Sheep,MISSING,2026-09-02T00:00:00.000Z
+dry-aged-beef-ribeye,Dry-Aged Beef Ribeye,assets/ingredients/1_supply_ribeye.png,2026-09-02T00:00:00.000Z
+dry-aged-beef-strip,Dry-Aged Beef Strip,assets/ingredients/1_supply_steak.png,2026-09-02T00:00:00.000Z
+dry-aged-beef-sirloin,Dry-Aged Beef Sirloin,assets/ingredients/1_supply_steak.png,2026-09-02T00:00:00.000Z
+dry-aged-lamb-loin,Dry-Aged Lamb Loin,assets/ingredients/1_supply_lamb_chops.png,2026-09-02T00:00:00.000Z
+dry-aged-lamb-rack,Dry-Aged Lamb Rack,assets/ingredients/1_supply_lamb_chops.png,2026-09-02T00:00:00.000Z
+hops,Hops,MISSING,2026-09-02T00:00:00.000Z
+carne-asada,Carne asada,MISSING,2026-09-02T00:00:00.000Z
+carnitas,Carnitas,MISSING,2026-09-02T00:00:00.000Z
+al-pastor,Al pastor,MISSING,2026-09-02T00:00:00.000Z
+barbacoa,Barbacoa,MISSING,2026-09-02T00:00:00.000Z
+cooked-lengua,Cooked lengua,MISSING,2026-09-02T00:00:00.000Z
+crispy-tripas,Crispy tripas,MISSING,2026-09-02T00:00:00.000Z
+refried-beans,Refried beans,MISSING,2026-09-02T00:00:00.000Z
+salsa-roja,Salsa roja,MISSING,2026-09-02T00:00:00.000Z
+chile-pepper,Chile pepper,assets/ingredients/1_supply_chile_pepper.png,2026-09-02T00:00:00.000Z
+mexican-crema,Mexican crema,MISSING,2026-09-02T00:00:00.000Z
+asparagus,Asparagus,MISSING,2026-09-02T00:00:00.000Z
+wheat-grain,Wheat grain,assets/ingredients/1_supply_wheat_stalks.png,2026-09-02T00:00:00.000Z
+boiled-egg,½ boiled egg,assets/ingredients/1_supply_brown_speckled_eggs.png,2026-09-02T00:00:00.000Z
+seasoned-boiled-egg,½ seasoned boiled egg,assets/ingredients/1_supply_brown_speckled_eggs.png,2026-09-02T00:00:00.000Z

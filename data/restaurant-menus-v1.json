@@ -1,0 +1,1186 @@
+{
+  "version": 1,
+  "generatedAt": "2026-08-25T21:38:34.103Z",
+  "note": "Per-restaurant menu templates. Future Drive/Excel import via scripts/build-restaurant-menus.mjs.",
+  "substituteGroups": {
+    "beef-cuts": {
+      "label": "Beef cuts (interchangeable)",
+      "members": [
+        "Carne asada",
+        "Beef brisket",
+        "Beef round",
+        "Beef flank",
+        "Beef tongue",
+        "Ground beef",
+        "Barbacoa"
+      ]
+    },
+    "broth": {
+      "label": "Broths (interchangeable)",
+      "members": [
+        "Beef broth",
+        "Chicken broth",
+        "Pork broth"
+      ]
+    },
+    "ramen-noodles": {
+      "label": "Ramen noodle base (Ramen Shop only)",
+      "members": [
+        "Ramen noodles"
+      ]
+    },
+    "pho-noodles": {
+      "label": "Pho noodle base (Pho Shop only)",
+      "members": [
+        "Rice noodles"
+      ]
+    }
+  },
+  "restaurants": [
+    {
+      "id": "taqueria",
+      "catalogId": "mexican",
+      "eateryType": "taqueria",
+      "name": "Taqueria",
+      "icon": "🌮",
+      "classAccess": [
+        "third",
+        "tail"
+      ],
+      "qualityMin": 0,
+      "dishFamilies": [
+        {
+          "id": "taco",
+          "label": "Taco",
+          "unit": "taco",
+          "slots": [
+            {
+              "id": "shell",
+              "label": "tortilla",
+              "required": true,
+              "defaultChoice": "Corn tortillas",
+              "choices": [
+                [
+                  "Corn tortillas",
+                  0.028
+                ],
+                [
+                  "Flour tortillas",
+                  0.04
+                ]
+              ]
+            },
+            {
+              "id": "protein",
+              "label": "filling",
+              "required": true,
+              "defaultChoice": "Carne asada",
+              "substituteGroup": "beef-cuts",
+              "choices": [
+                [
+                  "Carne asada",
+                  0.055
+                ],
+                [
+                  "Carnitas",
+                  0.055
+                ],
+                [
+                  "Al pastor",
+                  0.055
+                ],
+                [
+                  "Barbacoa",
+                  0.055
+                ],
+                [
+                  "Chicken thigh",
+                  0.06
+                ],
+                [
+                  "Cooked lengua",
+                  0.055
+                ],
+                [
+                  "Crispy tripas",
+                  0.05
+                ],
+                [
+                  "Refried beans",
+                  0.065
+                ],
+                [
+                  "Mushrooms",
+                  0.06
+                ],
+                [
+                  "Ground beef",
+                  0.055
+                ],
+                [
+                  "Tilapia",
+                  0.06
+                ]
+              ]
+            },
+            {
+              "id": "herbs",
+              "label": "herbs",
+              "required": false,
+              "defaultChoice": "Cilantro",
+              "choices": [
+                [
+                  "Cilantro",
+                  0.004
+                ],
+                [
+                  "Onion",
+                  0.008
+                ]
+              ]
+            },
+            {
+              "id": "sauce",
+              "label": "salsa",
+              "required": false,
+              "defaultChoice": "Salsa roja",
+              "choices": [
+                [
+                  "Salsa roja",
+                  0.015
+                ],
+                [
+                  "Lime",
+                  0.01
+                ],
+                [
+                  "Chile pepper",
+                  0.004
+                ]
+              ]
+            },
+            {
+              "id": "dairy",
+              "label": "cheese",
+              "required": false,
+              "defaultChoice": "Cheese",
+              "choices": [
+                [
+                  "Cheese",
+                  0.015
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "id": "quesadilla",
+          "label": "Quesadilla",
+          "unit": "serving",
+          "slots": [
+            {
+              "id": "shell",
+              "label": "tortilla",
+              "required": true,
+              "defaultChoice": "Flour tortillas",
+              "choices": [
+                [
+                  "Flour tortillas",
+                  0.08
+                ],
+                [
+                  "Corn tortillas",
+                  0.056
+                ]
+              ]
+            },
+            {
+              "id": "protein",
+              "label": "filling",
+              "required": false,
+              "defaultChoice": "Cheese",
+              "choices": [
+                [
+                  "Cheese",
+                  0.07
+                ],
+                [
+                  "Al pastor",
+                  0.065
+                ],
+                [
+                  "Chicken thigh",
+                  0.06
+                ]
+              ]
+            },
+            {
+              "id": "herbs",
+              "label": "finish",
+              "required": false,
+              "defaultChoice": "Onion",
+              "choices": [
+                [
+                  "Onion",
+                  0.008
+                ],
+                [
+                  "Cilantro",
+                  0.004
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "id": "elote",
+          "label": "Elote",
+          "unit": "ear",
+          "slots": [
+            {
+              "id": "base",
+              "label": "corn",
+              "required": true,
+              "defaultChoice": "Corn",
+              "choices": [
+                [
+                  "Corn",
+                  0.11
+                ]
+              ]
+            },
+            {
+              "id": "dairy",
+              "label": "crema",
+              "required": false,
+              "defaultChoice": "Mexican crema",
+              "choices": [
+                [
+                  "Mexican crema",
+                  0.015
+                ],
+                [
+                  "Cheese",
+                  0.012
+                ]
+              ]
+            },
+            {
+              "id": "acid",
+              "label": "acid",
+              "required": false,
+              "defaultChoice": "Lime",
+              "choices": [
+                [
+                  "Lime",
+                  0.01
+                ],
+                [
+                  "Lemon",
+                  0.01
+                ]
+              ]
+            },
+            {
+              "id": "spice",
+              "label": "chile",
+              "required": false,
+              "defaultChoice": "Chile pepper",
+              "choices": [
+                [
+                  "Chile pepper",
+                  0.002
+                ],
+                [
+                  "Cilantro",
+                  0.002
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pho",
+      "catalogId": "pho",
+      "eateryType": "pho",
+      "name": "Pho Shop",
+      "icon": "🥣",
+      "classAccess": [
+        "second",
+        "third",
+        "tail"
+      ],
+      "qualityMin": 60,
+      "dishFamilies": [
+        {
+          "id": "pho-bowl",
+          "label": "Pho bowl",
+          "unit": "serving",
+          "slots": [
+            {
+              "id": "noodle",
+              "label": "noodle",
+              "required": true,
+              "defaultChoice": "Rice noodles",
+              "choices": [
+                [
+                  "Rice noodles",
+                  0.18
+                ]
+              ]
+            },
+            {
+              "id": "broth",
+              "label": "broth",
+              "required": true,
+              "defaultChoice": "Beef broth",
+              "substituteGroup": "broth",
+              "choices": [
+                [
+                  "Beef broth",
+                  0.4
+                ],
+                [
+                  "Chicken broth",
+                  0.4
+                ]
+              ]
+            },
+            {
+              "id": "protein",
+              "label": "protein",
+              "required": false,
+              "defaultChoice": "Beef brisket",
+              "substituteGroup": "beef-cuts",
+              "choices": [
+                [
+                  "Beef brisket",
+                  0.09
+                ],
+                [
+                  "Beef flank",
+                  0.09
+                ],
+                [
+                  "Beef round",
+                  0.09
+                ],
+                [
+                  "Chicken breast",
+                  0.09
+                ]
+              ]
+            },
+            {
+              "id": "herbs",
+              "label": "herbs",
+              "required": false,
+              "defaultChoice": "Cilantro",
+              "choices": [
+                [
+                  "Cilantro",
+                  0.005
+                ],
+                [
+                  "Thai basil",
+                  0.005
+                ],
+                [
+                  "Scallion",
+                  0.01
+                ]
+              ]
+            },
+            {
+              "id": "acid",
+              "label": "acid / sprout",
+              "required": false,
+              "defaultChoice": "Lime",
+              "choices": [
+                [
+                  "Lime",
+                  0.03
+                ],
+                [
+                  "Mung bean sprouts",
+                  0.025
+                ]
+              ]
+            },
+            {
+              "id": "spice",
+              "label": "broth spice",
+              "required": false,
+              "defaultChoice": "Star anise",
+              "choices": [
+                [
+                  "Star anise",
+                  0.002
+                ],
+                [
+                  "Cinnamon",
+                  0.002
+                ]
+              ]
+            },
+            {
+              "id": "aromatic",
+              "label": "aromatic",
+              "required": false,
+              "defaultChoice": "Onion",
+              "choices": [
+                [
+                  "Ginger",
+                  0.003
+                ],
+                [
+                  "Onion",
+                  0.015
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ramen",
+      "catalogId": "ramen",
+      "eateryType": "ramen",
+      "name": "Ramen Shop",
+      "icon": "🍜",
+      "classAccess": [
+        "second",
+        "third",
+        "tail"
+      ],
+      "qualityMin": 60,
+      "dishFamilies": [
+        {
+          "id": "ramen-bowl",
+          "label": "Ramen bowl",
+          "unit": "serving",
+          "slots": [
+            {
+              "id": "noodle",
+              "label": "noodle",
+              "required": true,
+              "defaultChoice": "Ramen noodles",
+              "choices": [
+                [
+                  "Ramen noodles",
+                  0.13
+                ]
+              ]
+            },
+            {
+              "id": "broth",
+              "label": "broth",
+              "required": true,
+              "defaultChoice": "Pork broth",
+              "substituteGroup": "broth",
+              "choices": [
+                [
+                  "Pork broth",
+                  0.35
+                ],
+                [
+                  "Miso",
+                  0.03
+                ]
+              ],
+              "choiceExtras": {
+                "Miso": [
+                  [
+                    "Water",
+                    0.35
+                  ]
+                ]
+              }
+            },
+            {
+              "id": "protein",
+              "label": "protein",
+              "required": false,
+              "defaultChoice": "Chashu",
+              "choices": [
+                [
+                  "Chashu",
+                  0.08
+                ],
+                [
+                  "Chicken thigh",
+                  0.08
+                ],
+                [
+                  "Eggs",
+                  1
+                ]
+              ]
+            },
+            {
+              "id": "topping",
+              "label": "topping",
+              "required": false,
+              "defaultChoice": "Scallion",
+              "choices": [
+                [
+                  "Scallion",
+                  0.01
+                ],
+                [
+                  "Mung bean sprouts",
+                  0.025
+                ],
+                [
+                  "Corn",
+                  0.04
+                ],
+                [
+                  "Nori",
+                  0.004
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "diner",
+      "catalogId": "diner",
+      "eateryType": "diner",
+      "eateryTypes": [
+        "sandwich"
+      ],
+      "name": "American Diner",
+      "icon": "🍳",
+      "classAccess": [
+        "first",
+        "second",
+        "third"
+      ],
+      "qualityMin": 50,
+      "dishFamilies": [
+        {
+          "id": "entree",
+          "label": "Entrée",
+          "unit": "serving",
+          "slots": [
+            {
+              "id": "protein",
+              "label": "main protein",
+              "required": true,
+              "defaultChoice": "Ground beef",
+              "choices": [
+                [
+                  "Beef tenderloin",
+                  0.12
+                ],
+                [
+                  "Beef ribeye",
+                  0.12
+                ],
+                [
+                  "Beef brisket",
+                  0.12
+                ],
+                [
+                  "Ground beef",
+                  0.12
+                ],
+                [
+                  "Pork loin/chops",
+                  0.12
+                ],
+                [
+                  "Chicken breast",
+                  0.12
+                ],
+                [
+                  "Chicken thigh",
+                  0.12
+                ],
+                [
+                  "Eggs",
+                  2
+                ]
+              ]
+            },
+            {
+              "id": "starch",
+              "label": "carb or vegetable",
+              "required": true,
+              "defaultChoice": "Potatoes",
+              "choices": [
+                [
+                  "Potatoes",
+                  0.18
+                ],
+                [
+                  "Milled rice",
+                  0.15
+                ],
+                [
+                  "Wheat flour",
+                  0.07
+                ],
+                [
+                  "Corn",
+                  0.15
+                ],
+                [
+                  "Cabbage",
+                  0.16
+                ],
+                [
+                  "Carrots",
+                  0.14
+                ]
+              ]
+            },
+            {
+              "id": "sauce",
+              "label": "fruit/veg/herb sauce",
+              "required": false,
+              "defaultChoice": "Tomatoes",
+              "choices": [
+                [
+                  "Tomatoes",
+                  0.06
+                ],
+                [
+                  "Apples",
+                  0.06
+                ],
+                [
+                  "Mushrooms",
+                  0.06
+                ],
+                [
+                  "Basil",
+                  0.008
+                ],
+                [
+                  "Onion",
+                  0.05
+                ],
+                [
+                  "Lemon",
+                  0.03
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "id": "appetizer",
+          "label": "Appetizer",
+          "unit": "serving",
+          "slots": [
+            {
+              "id": "base",
+              "label": "base",
+              "required": true,
+              "defaultChoice": "Potatoes",
+              "choices": [
+                [
+                  "Potatoes",
+                  0.1
+                ],
+                [
+                  "Cabbage",
+                  0.1
+                ],
+                [
+                  "Carrots",
+                  0.1
+                ],
+                [
+                  "Corn",
+                  0.1
+                ],
+                [
+                  "Wheat flour",
+                  0.05
+                ]
+              ]
+            },
+            {
+              "id": "finish",
+              "label": "finish",
+              "required": false,
+              "defaultChoice": "Tomatoes",
+              "choices": [
+                [
+                  "Tomatoes",
+                  0.035
+                ],
+                [
+                  "Basil",
+                  0.005
+                ],
+                [
+                  "Onion",
+                  0.035
+                ],
+                [
+                  "Mushrooms",
+                  0.035
+                ],
+                [
+                  "Cheese",
+                  0.025
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "finedining",
+      "catalogId": "michelin",
+      "eateryType": "finedining",
+      "name": "Fine Dining",
+      "icon": "⭐",
+      "classAccess": [
+        "first"
+      ],
+      "qualityMin": 85,
+      "dishFamilies": [
+        {
+          "id": "steak-plate",
+          "label": "Steak plate",
+          "unit": "serving",
+          "slots": [
+            {
+              "id": "protein",
+              "label": "steak",
+              "required": true,
+              "defaultChoice": "Beef ribeye",
+              "choices": [
+                [
+                  "Beef tenderloin",
+                  0.18
+                ],
+                [
+                  "Beef ribeye",
+                  0.18
+                ],
+                [
+                  "Beef strip",
+                  0.18
+                ],
+                [
+                  "Lamb loin",
+                  0.18
+                ]
+              ]
+            },
+            {
+              "id": "starch",
+              "label": "starch",
+              "required": true,
+              "defaultChoice": "Potatoes",
+              "choices": [
+                [
+                  "Potatoes",
+                  0.15
+                ],
+                [
+                  "Milled rice",
+                  0.15
+                ]
+              ]
+            },
+            {
+              "id": "vegetable",
+              "label": "vegetable",
+              "required": true,
+              "defaultChoice": "Mushrooms",
+              "choices": [
+                [
+                  "Mushrooms",
+                  0.1
+                ],
+                [
+                  "Carrots",
+                  0.1
+                ],
+                [
+                  "Asparagus",
+                  0.1
+                ]
+              ]
+            },
+            {
+              "id": "finish",
+              "label": "sauce / finish",
+              "required": false,
+              "defaultChoice": "Butter",
+              "choices": [
+                [
+                  "Butter",
+                  0.045
+                ],
+                [
+                  "Tomatoes",
+                  0.06
+                ],
+                [
+                  "Lemon",
+                  0.03
+                ],
+                [
+                  "Basil",
+                  0.004
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "id": "risotto",
+          "label": "Risotto",
+          "unit": "serving",
+          "slots": [
+            {
+              "id": "rice",
+              "label": "rice",
+              "required": true,
+              "defaultChoice": "Milled rice",
+              "choices": [
+                [
+                  "Milled rice",
+                  0.08
+                ]
+              ]
+            },
+            {
+              "id": "stock",
+              "label": "stock",
+              "required": true,
+              "defaultChoice": "Chicken broth",
+              "substituteGroup": "broth",
+              "choices": [
+                [
+                  "Chicken broth",
+                  0.28
+                ],
+                [
+                  "Beef broth",
+                  0.28
+                ]
+              ]
+            },
+            {
+              "id": "feature",
+              "label": "seasonal feature",
+              "required": true,
+              "defaultChoice": "Mushrooms",
+              "choices": [
+                [
+                  "Mushrooms",
+                  0.075
+                ],
+                [
+                  "Pumpkin",
+                  0.1
+                ],
+                [
+                  "Corn",
+                  0.075
+                ],
+                [
+                  "Tomatoes",
+                  0.075
+                ]
+              ]
+            },
+            {
+              "id": "finish",
+              "label": "fresh finish",
+              "required": false,
+              "defaultChoice": "Basil",
+              "choices": [
+                [
+                  "Basil",
+                  0.004
+                ],
+                [
+                  "Scallion",
+                  0.01
+                ],
+                [
+                  "Lemon",
+                  0.015
+                ],
+                [
+                  "Butter",
+                  0.01
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kitchen",
+      "catalogId": null,
+      "eateryType": "kitchen",
+      "name": "Communal Kitchen",
+      "icon": "🍲",
+      "classAccess": [
+        "first",
+        "second",
+        "third",
+        "tail"
+      ],
+      "qualityMin": 0,
+      "dishFamilies": [
+        {
+          "id": "daily-stew",
+          "label": "Daily stew",
+          "unit": "serving",
+          "slots": [
+            {
+              "id": "broth",
+              "label": "broth base",
+              "required": true,
+              "defaultChoice": "Beef broth",
+              "substituteGroup": "broth",
+              "choices": [
+                [
+                  "Beef broth",
+                  0.25
+                ],
+                [
+                  "Chicken broth",
+                  0.25
+                ],
+                [
+                  "Pork broth",
+                  0.25
+                ]
+              ]
+            },
+            {
+              "id": "protein",
+              "label": "protein",
+              "required": false,
+              "defaultChoice": "Ground beef",
+              "choices": [
+                [
+                  "Ground beef",
+                  0.08
+                ],
+                [
+                  "Chicken thigh",
+                  0.08
+                ],
+                [
+                  "Eggs",
+                  1
+                ],
+                [
+                  "Refried beans",
+                  0.065
+                ]
+              ]
+            },
+            {
+              "id": "vegetable",
+              "label": "vegetable",
+              "required": false,
+              "defaultChoice": "Carrots",
+              "choices": [
+                [
+                  "Carrots",
+                  0.05
+                ],
+                [
+                  "Cabbage",
+                  0.06
+                ],
+                [
+                  "Potatoes",
+                  0.07
+                ],
+                [
+                  "Onion",
+                  0.03
+                ]
+              ]
+            },
+            {
+              "id": "grain",
+              "label": "grain",
+              "required": false,
+              "defaultChoice": "Milled rice",
+              "choices": [
+                [
+                  "Milled rice",
+                  0.06
+                ],
+                [
+                  "Wheat grain",
+                  0.05
+                ],
+                [
+                  "Corn",
+                  0.05
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bakery",
+      "catalogId": null,
+      "eateryType": "bakery",
+      "name": "Bakery",
+      "icon": "🥖",
+      "classAccess": [
+        "second",
+        "third"
+      ],
+      "qualityMin": 0,
+      "dishFamilies": [
+        {
+          "id": "bread-plate",
+          "label": "Bread plate",
+          "unit": "serving",
+          "slots": [
+            {
+              "id": "grain",
+              "label": "flour / bread",
+              "required": true,
+              "defaultChoice": "Wheat flour",
+              "choices": [
+                [
+                  "Wheat flour",
+                  0.09
+                ],
+                [
+                  "Bread",
+                  0.1
+                ]
+              ]
+            },
+            {
+              "id": "dairy",
+              "label": "butter / dairy",
+              "required": false,
+              "defaultChoice": "Butter",
+              "choices": [
+                [
+                  "Butter",
+                  0.008
+                ],
+                [
+                  "Cheese",
+                  0.02
+                ]
+              ]
+            },
+            {
+              "id": "fruit",
+              "label": "fruit finish",
+              "required": false,
+              "defaultChoice": "Apples",
+              "choices": [
+                [
+                  "Apples",
+                  0.03
+                ],
+                [
+                  "Lemon",
+                  0.012
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sushi",
+      "catalogId": null,
+      "eateryType": "sushi",
+      "name": "Sushi Bar",
+      "icon": "🍣",
+      "classAccess": [
+        "first",
+        "second"
+      ],
+      "qualityMin": 70,
+      "dishFamilies": [
+        {
+          "id": "nigiri",
+          "label": "Nigiri",
+          "unit": "serving",
+          "slots": [
+            {
+              "id": "rice",
+              "label": "rice",
+              "required": true,
+              "defaultChoice": "Milled rice",
+              "choices": [
+                [
+                  "Milled rice",
+                  0.09
+                ]
+              ]
+            },
+            {
+              "id": "protein",
+              "label": "fish / protein",
+              "required": true,
+              "defaultChoice": "Salmon fillet",
+              "choices": [
+                [
+                  "Salmon fillet",
+                  0.05
+                ],
+                [
+                  "Shrimp",
+                  0.04
+                ],
+                [
+                  "Tilapia",
+                  0.05
+                ]
+              ]
+            },
+            {
+              "id": "accent",
+              "label": "accent",
+              "required": false,
+              "defaultChoice": "Soy sauce",
+              "choices": [
+                [
+                  "Soy sauce",
+                  0.01
+                ],
+                [
+                  "Ginger",
+                  0.003
+                ],
+                [
+                  "Nori",
+                  0.004
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

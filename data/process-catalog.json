@@ -1,0 +1,709 @@
+{
+  "catalog": {
+    "wheat_milling": {
+      "name": "Mill wheat \u2192 flour",
+      "days": 0,
+      "batchInput": {
+        "Wheat grain": 1
+      },
+      "outputs": {
+        "Wheat flour": 0.72,
+        "Wheat bran": 0.28
+      },
+      "outputGroup": {
+        "Wheat flour": "processed",
+        "Wheat bran": "byproducts"
+      },
+      "evidence": "Published processing baseline",
+      "source": {
+        "label": "USDA ERS wheat data",
+        "url": "https://www.ers.usda.gov/data-products/wheat-data/documentation",
+        "note": "72% flour extraction rate used in ERS milling calculations."
+      }
+    },
+    "rice_milling": {
+      "name": "Mill paddy \u2192 edible rice",
+      "days": 0,
+      "batchInput": {
+        "Paddy rice": 1
+      },
+      "outputs": {
+        "Milled rice": 0.68,
+        "Rice hull/bran": 0.32
+      },
+      "outputGroup": {
+        "Milled rice": "processed",
+        "Rice hull/bran": "byproducts"
+      },
+      "evidence": "Published processing baseline",
+      "source": {
+        "label": "IRRI Rice Knowledge Bank",
+        "url": "https://www.knowledgebank.irri.org/step-by-step-production/postharvest/milling/producing-good-quality-milled-rice/milling-yields",
+        "note": "Uses 68% conservative value within IRRI potential 68\u201372% range; modern multistage mills are typically 65\u201370%."
+      }
+    },
+    "milk_to_cheese": {
+      "name": "Cow milk \u2192 cheese + whey",
+      "days": 1,
+      "batchInput": {
+        "Cow milk": 10
+      },
+      "outputs": {
+        "Cheese": 1,
+        "Whey": 9
+      },
+      "outputGroup": {
+        "Cheese": "processed",
+        "Whey": "byproducts"
+      },
+      "evidence": "House dairy mass balance",
+      "source": {
+        "label": "Simulation assumption",
+        "url": "",
+        "note": "~10% cheese solids from milk; remainder whey for feed or further processing."
+      }
+    },
+    "rice_flour": {
+      "name": "Grind rice \u2192 rice flour",
+      "days": 0,
+      "batchInput": {
+        "Milled rice": 1
+      },
+      "outputs": {
+        "Rice flour": 0.98,
+        "Rice grinding loss": 0.02
+      },
+      "outputGroup": {
+        "Rice flour": "processed",
+        "Rice grinding loss": "byproducts"
+      },
+      "evidence": "Snowpiercer engineering assumption",
+      "source": {
+        "label": "Simulation assumption",
+        "url": "",
+        "note": "2% handling/grinding loss is explicit and editable in data; replace when a validated train mill spec exists."
+      }
+    },
+    "rice_noodles": {
+      "name": "Rice flour \u2192 fresh rice noodles",
+      "days": 0,
+      "batchInput": {
+        "Rice flour": 0.8,
+        "Water": 0.21,
+        "Salt": 0.01
+      },
+      "outputs": {
+        "Rice noodles": 1,
+        "Noodle process loss": 0.02
+      },
+      "outputGroup": {
+        "Rice noodles": "processed",
+        "Noodle process loss": "byproducts"
+      },
+      "evidence": "Snowpiercer house BOM",
+      "source": {
+        "label": "House production standard",
+        "url": "",
+        "note": "Mass-balanced wet-noodle standard; ingredient identities are fixed, ratio remains an explicit simulation assumption."
+      }
+    },
+    "ramen_noodles": {
+      "name": "Wheat flour \u2192 fresh ramen noodles",
+      "days": 0,
+      "batchInput": {
+        "Wheat flour": 0.75,
+        "Water": 0.25,
+        "Salt": 0.008,
+        "Kansui salts": 0.01
+      },
+      "outputs": {
+        "Ramen noodles": 1,
+        "Noodle process loss": 0.018
+      },
+      "outputGroup": {
+        "Ramen noodles": "processed",
+        "Noodle process loss": "byproducts"
+      },
+      "evidence": "Snowpiercer house BOM",
+      "source": {
+        "label": "House production standard",
+        "url": "",
+        "note": "Fresh alkaline wheat-noodle BOM. No mystery noodle units: flour, water, salt and kansui are all consumed."
+      }
+    },
+    "mung_sprouts": {
+      "name": "Mung beans \u2192 bean sprouts",
+      "days": 5,
+      "batchInput": {
+        "Mung beans": 1,
+        "Water": 5
+      },
+      "outputs": {
+        "Mung bean sprouts": 6
+      },
+      "outputGroup": {
+        "Mung bean sprouts": "processed"
+      },
+      "evidence": "Published production baseline",
+      "source": {
+        "label": "Oregon State University Sprout Production",
+        "url": "https://horticulture.oregonstate.edu/oregon-vegetables/sprout-production-0",
+        "note": "Mung beans increase about six-fold and are ready in 4\u20135 days under proper conditions; model uses 5 days."
+      }
+    },
+    "rice_koji": {
+      "name": "Rice \u2192 rice koji",
+      "days": 2,
+      "batchInput": {
+        "Milled rice": 1,
+        "Koji starter": 0.005,
+        "Water": 0.2
+      },
+      "outputs": {
+        "Rice koji": 1.18,
+        "Koji process loss": 0.025
+      },
+      "outputGroup": {
+        "Rice koji": "processed",
+        "Koji process loss": "byproducts"
+      },
+      "evidence": "Published process + house mass balance",
+      "source": {
+        "label": "Japan MAFF traditional miso",
+        "url": "https://www.maff.go.jp/e/policies/market/dento_syoku/bunrui/syouyu-miso.html",
+        "note": "MAFF establishes rice/barley/soy koji as the fermentation base; exact train batch hydration/loss is an explicit house assumption."
+      }
+    },
+    "miso": {
+      "name": "Soybeans + rice koji \u2192 miso",
+      "days": 180,
+      "batchInput": {
+        "Soybeans": 0.45,
+        "Rice koji": 0.45,
+        "Salt": 0.1,
+        "Water": 0.05
+      },
+      "outputs": {
+        "Miso": 1,
+        "Miso fermentation loss": 0.05
+      },
+      "outputGroup": {
+        "Miso": "processed",
+        "Miso fermentation loss": "byproducts"
+      },
+      "evidence": "Published process + house ratio",
+      "source": {
+        "label": "Japan MAFF traditional miso",
+        "url": "https://www.maff.go.jp/e/policies/market/dento_syoku/bunrui/syouyu-miso.html",
+        "note": "MAFF: steamed soybeans + koji + salt; aging ranges from days to two years. Train standard uses 180 days and a visible 45/45/10 dry-input ratio."
+      }
+    },
+    "soy_sauce": {
+      "name": "Soybeans + wheat \u2192 soy sauce",
+      "days": 240,
+      "batchInput": {
+        "Soybeans": 0.3,
+        "Wheat grain": 0.3,
+        "Salt": 0.18,
+        "Water": 0.5,
+        "Koji starter": 0.004
+      },
+      "outputs": {
+        "Soy sauce": 1,
+        "Soy sauce press cake": 0.284
+      },
+      "outputGroup": {
+        "Soy sauce": "processed",
+        "Soy sauce press cake": "byproducts"
+      },
+      "evidence": "Published process + house mass balance",
+      "source": {
+        "label": "Japan MAFF soy sauce",
+        "url": "https://www.maff.go.jp/e/policies/market/dento_syoku/bunrui/syouyu-miso.html",
+        "note": "Koikuchi uses equal soybean and wheat in koji and approximately 8 months fermentation/aging. Model uses 240 days."
+      }
+    },
+    "beef_broth": {
+      "name": "Cattle bones \u2192 beef pho broth",
+      "days": 1,
+      "batchInput": {
+        "Cattle bones": 8,
+        "Water": 14,
+        "Onion": 1,
+        "Ginger": 0.25,
+        "Star anise": 0.04,
+        "Coriander seed": 0.03,
+        "Fennel seed": 0.03,
+        "Cinnamon": 0.03,
+        "Cloves": 0.01,
+        "Fish sauce": 0.25,
+        "Sugar": 0.1,
+        "Salt": 0.15
+      },
+      "outputs": {
+        "Beef broth": 10
+      },
+      "outputGroup": {
+        "Beef broth": "processed"
+      },
+      "evidence": "Snowpiercer house BOM",
+      "source": {
+        "label": "House pho stock standard",
+        "url": "",
+        "note": "All aromatics/spices are explicit; meat cuts such as brisket remain optional serving additions, not broth requirements."
+      }
+    },
+    "chicken_broth": {
+      "name": "Chicken bones \u2192 chicken pho broth",
+      "days": 1,
+      "batchInput": {
+        "Chickens bones": 5,
+        "Water": 13,
+        "Onion": 0.8,
+        "Ginger": 0.2,
+        "Star anise": 0.025,
+        "Coriander seed": 0.02,
+        "Fennel seed": 0.02,
+        "Cinnamon": 0.02,
+        "Cloves": 0.008,
+        "Fish sauce": 0.2,
+        "Sugar": 0.08,
+        "Salt": 0.12
+      },
+      "outputs": {
+        "Chicken broth": 10
+      },
+      "outputGroup": {
+        "Chicken broth": "processed"
+      },
+      "evidence": "Snowpiercer house BOM",
+      "source": {
+        "label": "House pho stock standard",
+        "url": "",
+        "note": "Measured chicken-stock route with the same traceable aromatic chain."
+      }
+    },
+    "pork_broth": {
+      "name": "Pig bones \u2192 ramen pork broth",
+      "days": 1,
+      "batchInput": {
+        "Pigs bones": 8,
+        "Water": 15,
+        "Onion": 0.7,
+        "Ginger": 0.2,
+        "Garlic": 0.2,
+        "Scallion": 0.2,
+        "Salt": 0.1
+      },
+      "outputs": {
+        "Pork broth": 10
+      },
+      "outputGroup": {
+        "Pork broth": "processed"
+      },
+      "evidence": "Snowpiercer house BOM",
+      "source": {
+        "label": "House ramen stock standard",
+        "url": "",
+        "note": "Measured pork-bone stock route; restaurant toppings are tracked separately."
+      }
+    },
+    "nori": {
+      "name": "Seaweed \u2192 nori",
+      "days": 1,
+      "batchInput": {
+        "Seaweed": 1
+      },
+      "outputs": {
+        "Nori": 0.18,
+        "Nori process water loss": 0.82
+      },
+      "outputGroup": {
+        "Nori": "processed",
+        "Nori process water loss": "byproducts"
+      },
+      "evidence": "Snowpiercer engineering assumption",
+      "source": {
+        "label": "Simulation assumption",
+        "url": "",
+        "note": "Drying yield is explicit and should be replaced by measured seaweed moisture data for the selected cultivar."
+      }
+    },
+    "menma": {
+      "name": "Bamboo shoots \u2192 menma",
+      "days": 14,
+      "batchInput": {
+        "Bamboo shoots": 1,
+        "Salt": 0.08,
+        "Water": 0.2
+      },
+      "outputs": {
+        "Menma": 0.95,
+        "Menma fermentation loss": 0.33
+      },
+      "outputGroup": {
+        "Menma": "processed",
+        "Menma fermentation loss": "byproducts"
+      },
+      "evidence": "Snowpiercer engineering assumption",
+      "source": {
+        "label": "Simulation assumption",
+        "url": "",
+        "note": "Fermentation duration and mass balance are visible assumptions pending a selected production method."
+      }
+    },
+    "chocolate": {
+      "name": "Cocoa beans \u2192 chocolate",
+      "days": 1,
+      "batchInput": {
+        "Cocoa beans": 0.55,
+        "Sugar": 0.3,
+        "Cow milk": 0.15
+      },
+      "outputs": {
+        "Chocolate": 0.9,
+        "Cocoa process loss": 0.1
+      },
+      "outputGroup": {
+        "Chocolate": "processed",
+        "Cocoa process loss": "byproducts"
+      },
+      "evidence": "Snowpiercer house BOM",
+      "source": {
+        "label": "House chocolate standard",
+        "url": "",
+        "note": "Simple train formulation so dessert demand traces to cocoa, sugar and milk; not a universal chocolate formula."
+      }
+    },
+    "chashu": {
+      "name": "Pork belly \u2192 chashu",
+      "days": 1,
+      "batchInput": {
+        "Pork belly": 1,
+        "Soy sauce": 0.12,
+        "Sugar": 0.06,
+        "Ginger": 0.02,
+        "Garlic": 0.01,
+        "Water": 0.2
+      },
+      "outputs": {
+        "Chashu": 0.9,
+        "Chashu cooking loss": 0.51
+      },
+      "outputGroup": {
+        "Chashu": "processed",
+        "Chashu cooking loss": "byproducts"
+      },
+      "evidence": "Snowpiercer house BOM",
+      "source": {
+        "label": "House ramen topping standard",
+        "url": "",
+        "note": "Traceable pork/soy/sugar/aromatic route; exact seasoning ratio is a house standard."
+      }
+    },
+    "dehydrate_ramen_noodles": {
+      "name": "Dehydrator + fresh ramen \u2192 dehydrated ramen",
+      "days": 1,
+      "station": "Dehydrator",
+      "batchInput": {
+        "Ramen noodles": 1,
+        "Dehydrator": 1
+      },
+      "outputs": {
+        "Dehydrated ramen noodles": 0.9
+      },
+      "outputGroup": {
+        "Dehydrated ramen noodles": "processed"
+      },
+      "shelfLife": {
+        "beforeItem": "Ramen noodles",
+        "afterItem": "Dehydrated ramen noodles",
+        "beforeDays": 3,
+        "afterDays": 180,
+        "note": "Process-recipe shelf life: fresh noodles vs shelf-stable dehydrated (scoring table dehydratedCarb 0.5\u2605). Food Master has no shelfDays column."
+      },
+      "starRolesOut": {
+        "Dehydrated ramen noodles": [
+          "dehydratedCarb"
+        ]
+      },
+      "evidence": "Melinda dish scoring lock \u2014 dehydrated noodles are a separate shelf item",
+      "source": {
+        "label": "Dish star scoring + process authoring",
+        "url": "",
+        "note": "Consumes fresh ramen + dehydrator station; writes a new ingredient with longer shelf life and dehydratedCarb star role."
+      }
+    }
+  },
+  "byOutput": {
+    "Wheat flour": [
+      {
+        "id": "wheat_milling",
+        "name": "Mill wheat \u2192 flour",
+        "days": 0,
+        "inputs": {
+          "Wheat grain": 1
+        },
+        "outputQty": 0.72,
+        "evidence": "Published processing baseline"
+      }
+    ],
+    "Milled rice": [
+      {
+        "id": "rice_milling",
+        "name": "Mill paddy \u2192 edible rice",
+        "days": 0,
+        "inputs": {
+          "Paddy rice": 1
+        },
+        "outputQty": 0.68,
+        "evidence": "Published processing baseline"
+      }
+    ],
+    "Cheese": [
+      {
+        "id": "milk_to_cheese",
+        "name": "Cow milk \u2192 cheese + whey",
+        "days": 1,
+        "inputs": {
+          "Cow milk": 10
+        },
+        "outputQty": 1,
+        "evidence": "House dairy mass balance"
+      }
+    ],
+    "Rice flour": [
+      {
+        "id": "rice_flour",
+        "name": "Grind rice \u2192 rice flour",
+        "days": 0,
+        "inputs": {
+          "Milled rice": 1
+        },
+        "outputQty": 0.98,
+        "evidence": "Snowpiercer engineering assumption"
+      }
+    ],
+    "Rice noodles": [
+      {
+        "id": "rice_noodles",
+        "name": "Rice flour \u2192 fresh rice noodles",
+        "days": 0,
+        "inputs": {
+          "Rice flour": 0.8,
+          "Water": 0.21,
+          "Salt": 0.01
+        },
+        "outputQty": 1,
+        "evidence": "Snowpiercer house BOM"
+      }
+    ],
+    "Ramen noodles": [
+      {
+        "id": "ramen_noodles",
+        "name": "Wheat flour \u2192 fresh ramen noodles",
+        "days": 0,
+        "inputs": {
+          "Wheat flour": 0.75,
+          "Water": 0.25,
+          "Salt": 0.008,
+          "Kansui salts": 0.01
+        },
+        "outputQty": 1,
+        "evidence": "Snowpiercer house BOM"
+      }
+    ],
+    "Mung bean sprouts": [
+      {
+        "id": "mung_sprouts",
+        "name": "Mung beans \u2192 bean sprouts",
+        "days": 5,
+        "inputs": {
+          "Mung beans": 1,
+          "Water": 5
+        },
+        "outputQty": 6,
+        "evidence": "Published production baseline"
+      }
+    ],
+    "Rice koji": [
+      {
+        "id": "rice_koji",
+        "name": "Rice \u2192 rice koji",
+        "days": 2,
+        "inputs": {
+          "Milled rice": 1,
+          "Koji starter": 0.005,
+          "Water": 0.2
+        },
+        "outputQty": 1.18,
+        "evidence": "Published process + house mass balance"
+      }
+    ],
+    "Miso": [
+      {
+        "id": "miso",
+        "name": "Soybeans + rice koji \u2192 miso",
+        "days": 180,
+        "inputs": {
+          "Soybeans": 0.45,
+          "Rice koji": 0.45,
+          "Salt": 0.1,
+          "Water": 0.05
+        },
+        "outputQty": 1,
+        "evidence": "Published process + house ratio"
+      }
+    ],
+    "Soy sauce": [
+      {
+        "id": "soy_sauce",
+        "name": "Soybeans + wheat \u2192 soy sauce",
+        "days": 240,
+        "inputs": {
+          "Soybeans": 0.3,
+          "Wheat grain": 0.3,
+          "Salt": 0.18,
+          "Water": 0.5,
+          "Koji starter": 0.004
+        },
+        "outputQty": 1,
+        "evidence": "Published process + house mass balance"
+      }
+    ],
+    "Beef broth": [
+      {
+        "id": "beef_broth",
+        "name": "Cattle bones \u2192 beef pho broth",
+        "days": 1,
+        "inputs": {
+          "Cattle bones": 8,
+          "Water": 14,
+          "Onion": 1,
+          "Ginger": 0.25,
+          "Star anise": 0.04,
+          "Coriander seed": 0.03,
+          "Fennel seed": 0.03,
+          "Cinnamon": 0.03,
+          "Cloves": 0.01,
+          "Fish sauce": 0.25,
+          "Sugar": 0.1,
+          "Salt": 0.15
+        },
+        "outputQty": 10,
+        "evidence": "Snowpiercer house BOM"
+      }
+    ],
+    "Chicken broth": [
+      {
+        "id": "chicken_broth",
+        "name": "Chicken bones \u2192 chicken pho broth",
+        "days": 1,
+        "inputs": {
+          "Chickens bones": 5,
+          "Water": 13,
+          "Onion": 0.8,
+          "Ginger": 0.2,
+          "Star anise": 0.025,
+          "Coriander seed": 0.02,
+          "Fennel seed": 0.02,
+          "Cinnamon": 0.02,
+          "Cloves": 0.008,
+          "Fish sauce": 0.2,
+          "Sugar": 0.08,
+          "Salt": 0.12
+        },
+        "outputQty": 10,
+        "evidence": "Snowpiercer house BOM"
+      }
+    ],
+    "Pork broth": [
+      {
+        "id": "pork_broth",
+        "name": "Pig bones \u2192 ramen pork broth",
+        "days": 1,
+        "inputs": {
+          "Pigs bones": 8,
+          "Water": 15,
+          "Onion": 0.7,
+          "Ginger": 0.2,
+          "Garlic": 0.2,
+          "Scallion": 0.2,
+          "Salt": 0.1
+        },
+        "outputQty": 10,
+        "evidence": "Snowpiercer house BOM"
+      }
+    ],
+    "Nori": [
+      {
+        "id": "nori",
+        "name": "Seaweed \u2192 nori",
+        "days": 1,
+        "inputs": {
+          "Seaweed": 1
+        },
+        "outputQty": 0.18,
+        "evidence": "Snowpiercer engineering assumption"
+      }
+    ],
+    "Menma": [
+      {
+        "id": "menma",
+        "name": "Bamboo shoots \u2192 menma",
+        "days": 14,
+        "inputs": {
+          "Bamboo shoots": 1,
+          "Salt": 0.08,
+          "Water": 0.2
+        },
+        "outputQty": 0.95,
+        "evidence": "Snowpiercer engineering assumption"
+      }
+    ],
+    "Chocolate": [
+      {
+        "id": "chocolate",
+        "name": "Cocoa beans \u2192 chocolate",
+        "days": 1,
+        "inputs": {
+          "Cocoa beans": 0.55,
+          "Sugar": 0.3,
+          "Cow milk": 0.15
+        },
+        "outputQty": 0.9,
+        "evidence": "Snowpiercer house BOM"
+      }
+    ],
+    "Chashu": [
+      {
+        "id": "chashu",
+        "name": "Pork belly \u2192 chashu",
+        "days": 1,
+        "inputs": {
+          "Pork belly": 1,
+          "Soy sauce": 0.12,
+          "Sugar": 0.06,
+          "Ginger": 0.02,
+          "Garlic": 0.01,
+          "Water": 0.2
+        },
+        "outputQty": 0.9,
+        "evidence": "Snowpiercer house BOM"
+      }
+    ],
+    "Dehydrated ramen noodles": [
+      {
+        "id": "dehydrate_ramen_noodles",
+        "name": "Dehydrator + fresh ramen \u2192 dehydrated ramen",
+        "days": 1,
+        "inputs": {
+          "Ramen noodles": 1,
+          "Dehydrator": 1
+        },
+        "outputQty": 0.9,
+        "evidence": "Melinda dish scoring lock \u2014 dehydrated noodles are a separate shelf item"
+      }
+    ]
+  }
+}
