@@ -22,6 +22,8 @@
     kept: [],
     detailIng: null,
     galleryMode: 'have',
+    gallerySearch: '',
+    artFiles: [],
     longPressTimer: null,
     dishName: '',
     dishNameManual: false,
@@ -1017,18 +1019,235 @@
   }
 
   /* —— art gallery —— */
-  function renderGallery() {
-    const ings = state.catalog.ingredients.filter((i) => {
-      const has = Boolean(i.art);
-      return state.galleryMode === 'have' ? has : !has;
+  const GALLERY_TYPE_ORDER = [
+    'Vegetable', 'Fruit', 'Carb', 'Grain', 'Protein', 'Broth', 'Spice', 'Dairy', 'Fat', 'Other', 'Untitled'
+  ];
+
+  function artStem(path) {
+    const base = String(path || '').split('/').pop() || '';
+    return base.replace(/\.png$/i, '');
+  }
+
+  function normalizeArtPath(path) {
+    return String(path || '')
+      .trim()
+      .replace(/\\/g, '/')
+      .replace(/^\.\//, '');
+  }
+
+  function normalizeArtKey(s) {
+    return String(s || '')
+      .toLowerCase()
+      .replace(/^1_supply_/, '')
+      .replace(/^ingredient_/, '')
+      .replace(/\.png$/i, '')
+      .replace(/[^a-z0-9]+/g, '');
+  }
+
+  function galleryTypeRank(type) {
+    const i = GALLERY_TYPE_ORDER.indexOf(type || 'Other');
+    return i < 0 ? GALLERY_TYPE_ORDER.length : i;
+  }
+
+  function inferUiTypeFromStem(stem) {
+    const key = normalizeArtKey(stem);
+    if (!key) return 'Untitled';
+    let best = null;
+    for (const ing of state.catalog.ingredients || []) {
+      const idKey = normalizeArtKey(ing.id);
+      const nameKey = normalizeArtKey(ing.name);
+      if (key === idKey || key === nameKey || key.endsWith(idKey) || idKey && key.includes(idKey)) {
+        const t = ing.uiType || ing.group || 'Other';
+        if (!best || String(ing.name).length > String(best.name).length) best = { name: ing.name, type: t };
+      }
+    }
+    return best?.type || 'Untitled';
+  }
+
+  function referencedArtPaths() {
+    const used = new Set();
+    (state.catalog.ingredients || []).forEach((ing) => {
+      const art = normalizeArtPath(ing.art);
+      if (art) used.add(art);
     });
+    return used;
+  }
+
+  function unusedArtFiles() {
+    const used = referencedArtPaths();
+    const seen = new Set();
+    const out = [];
+    (state.artFiles || []).forEach((path) => {
+      const p = normalizeArtPath(path);
+      if (!p || used.has(p) || seen.has(p)) return;
+      seen.add(p);
+      out.push(p);
+    });
+    return out;
+  }
+
+  async function ensureArtFiles() {
+    if (state.artFiles.length) return state.artFiles;
+    try {
+      const res = await fetch('data/art-files.txt');
+      if (res.ok) {
+        state.artFiles = (await res.text())
+          .split(/\r?\n/)
+          .map((l) => l.trim())
+          .filter((l) => l && !l.startsWith('#'));
+      }
+    } catch { /* inventory optional */ }
+    return state.artFiles;
+  }
+
+  function persistIngredientArt(ing) {
+    const ts = Sync().nowIso();
+    ing.updatedAt = ts;
+    Sync().upsertLocal('ingredients', Sync().ingredientFromCatalog(ing, ts), { dirty: true });
+    Sync().upsertLocal('assets', Sync().assetFromIngredient(ing, ts), { dirty: true });
+  }
+
+  function assignArtToIngredient(ingId, artPath) {
+    const ing = state.byId.get(ingId);
+    const path = normalizeArtPath(artPath);
+    if (!ing || !path) return;
+    // One file → one catalog name: clear any other ingredient still pointing here
+    (state.catalog.ingredients || []).forEach((other) => {
+      if (other.id !== ingId && normalizeArtPath(other.art) === path) {
+        other.art = '';
+        persistIngredientArt(other);
+      }
+    });
+    ing.art = path;
+    persistIngredientArt(ing);
+    rebuildIndexes();
+    renderGrid();
+    renderTray();
+    renderGallery();
+  }
+
+  function paintedGalleryItems() {
+    const byPath = new Map();
+    const seenNameArt = new Set();
+
+    (state.catalog.ingredients || []).forEach((ing) => {
+      const art = normalizeArtPath(ing.art);
+      if (!art) return;
+      const nameArtKey = `${String(ing.name || '').toLowerCase()}|${art}`;
+      if (seenNameArt.has(nameArtKey)) return; // drop duplicate name+art catalog rows
+      seenNameArt.add(nameArtKey);
+
+      let group = byPath.get(art);
+      if (!group) {
+        group = {
+          art,
+          names: [],
+          uiType: ing.uiType || ing.group || 'Other'
+        };
+        byPath.set(art, group);
+      }
+      group.names.push(ing.name);
+    });
+
+    const items = [];
+    byPath.forEach((group) => {
+      const names = group.names;
+      const title = names.length === 1
+        ? names[0]
+        : `${names[0]} x${names.length}`;
+      items.push({
+        kind: 'named',
+        id: `art:${group.art}`,
+        title,
+        art: group.art,
+        uiType: group.uiType,
+        untitled: false,
+        names
+      });
+    });
+
+    unusedArtFiles().forEach((path) => {
+      const stem = artStem(path);
+      items.push({
+        kind: 'unused',
+        id: `unused:${path}`,
+        title: stem,
+        art: path,
+        uiType: inferUiTypeFromStem(stem),
+        untitled: true,
+        names: [stem]
+      });
+    });
+
+    items.sort((a, b) => {
+      const d = galleryTypeRank(a.uiType) - galleryTypeRank(b.uiType);
+      if (d) return d;
+      if (a.untitled !== b.untitled) return a.untitled ? 1 : -1;
+      return String(a.title).localeCompare(String(b.title));
+    });
+    return items;
+  }
+
+  function galleryQueryMatch(text) {
+    const q = (state.gallerySearch || '').trim().toLowerCase();
+    if (!q) return true;
+    return String(text || '').toLowerCase().includes(q);
+  }
+
+  function renderGallery() {
     $('#gal-have').classList.toggle('active', state.galleryMode === 'have');
     $('#gal-miss').classList.toggle('active', state.galleryMode === 'miss');
-    $('#gallery-grid').innerHTML = ings.map((ing) => `
-      <button type="button" class="ing-tile ${ing.art ? '' : 'missing-art'}" aria-label="${esc(ing.name)}">
-        ${artHtml(ing)}
-      </button>
-    `).join('') || `<p class="muted" style="grid-column:1/-1;text-align:center">None</p>`;
+    const grid = $('#gallery-grid');
+    grid.classList.toggle('gallery-miss', state.galleryMode === 'miss');
+
+    if (state.galleryMode === 'have') {
+      const items = paintedGalleryItems().filter((it) =>
+        galleryQueryMatch(it.title) ||
+        galleryQueryMatch(artStem(it.art)) ||
+        galleryQueryMatch(it.uiType) ||
+        (it.names || []).some((n) => galleryQueryMatch(n))
+      );
+      grid.innerHTML = items.map((it) => `
+        <div class="gal-tile ${it.untitled ? 'untitled' : ''}" title="${esc(it.title)}">
+          <div class="gal-thumb">
+            <img src="${esc(it.art)}" alt="" loading="lazy" decoding="async" draggable="false" />
+          </div>
+          ${it.untitled ? `<span class="gal-untitled-tag">untitled</span>` : ''}
+          <span class="gal-title">${esc(it.title)}</span>
+        </div>
+      `).join('') || `<p class="muted" style="grid-column:1/-1;text-align:center">None</p>`;
+      return;
+    }
+
+    const unused = unusedArtFiles().sort((a, b) => artStem(a).localeCompare(artStem(b)));
+    const missing = (state.catalog.ingredients || [])
+      .filter((ing) => !ing.art)
+      .filter((ing) => galleryQueryMatch(ing.name) || galleryQueryMatch(ing.uiType || ing.group))
+      .sort((a, b) => {
+        const d = galleryTypeRank(a.uiType || a.group) - galleryTypeRank(b.uiType || b.group);
+        return d || String(a.name).localeCompare(String(b.name));
+      });
+
+    const options = [`<option value="">assign</option>`]
+      .concat(unused.map((path) => `<option value="${esc(path)}">${esc(artStem(path))}</option>`))
+      .join('');
+
+    grid.innerHTML = missing.map((ing) => `
+      <div class="gal-miss-row">
+        <span class="gal-miss-name">${esc(ing.name)}</span>
+        <select class="gal-miss-select" data-ing-id="${esc(ing.id)}" aria-label="Assign art for ${esc(ing.name)}">
+          ${options}
+        </select>
+      </div>
+    `).join('') || `<p class="muted" style="text-align:center">None</p>`;
+
+    grid.querySelectorAll('select.gal-miss-select').forEach((sel) => {
+      sel.addEventListener('change', () => {
+        const path = sel.value;
+        if (!path) return;
+        assignArtToIngredient(sel.getAttribute('data-ing-id'), path);
+      });
+    });
   }
 
   /* —— export / bidirectional SoT —— */
@@ -1471,11 +1690,23 @@
     $('#btn-kept').addEventListener('click', () => { renderKept(); showView('view-kept'); });
     $('#btn-gallery').addEventListener('click', () => {
       state.galleryMode = 'have';
-      renderGallery();
-      showView('view-gallery');
+      ensureArtFiles().then(() => {
+        renderGallery();
+        showView('view-gallery');
+      });
     });
-    $('#gal-have').addEventListener('click', () => { state.galleryMode = 'have'; renderGallery(); });
-    $('#gal-miss').addEventListener('click', () => { state.galleryMode = 'miss'; renderGallery(); });
+    $('#gal-have').addEventListener('click', () => {
+      state.galleryMode = 'have';
+      ensureArtFiles().then(() => renderGallery());
+    });
+    $('#gal-miss').addEventListener('click', () => {
+      state.galleryMode = 'miss';
+      ensureArtFiles().then(() => renderGallery());
+    });
+    $('#gallery-search')?.addEventListener('input', (e) => {
+      state.gallerySearch = e.target.value || '';
+      renderGallery();
+    });
     $('#btn-add-variation').addEventListener('click', openVariationPicker);
     $('#btn-keep').addEventListener('click', keepDish);
     $('#btn-discard').addEventListener('click', () => { state.dish = null; showView('view-home'); });
@@ -1532,6 +1763,7 @@
       onStatus: setDriveStatus,
       tryPull: Sync().hasClientId()
     });
+    await ensureArtFiles();
     rebuildIndexes();
     loadKept();
     state.kept = state.kept.map((d) => ({
