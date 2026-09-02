@@ -1106,6 +1106,104 @@
               ]
             }
           ]
+        },
+        {
+          "id": "apple-pie",
+          "label": "Apple pie",
+          "unit": "serving",
+          "slots": [
+            {
+              "id": "fruit",
+              "label": "fruit filling",
+              "required": true,
+              "defaultChoice": "Apples",
+              "choices": [
+                [
+                  "Apples",
+                  0.12
+                ]
+              ]
+            },
+            {
+              "id": "grain",
+              "label": "crust flour",
+              "required": true,
+              "defaultChoice": "Wheat Flour",
+              "choices": [
+                [
+                  "Wheat Flour",
+                  0.08
+                ]
+              ]
+            },
+            {
+              "id": "dairy",
+              "label": "butter",
+              "required": true,
+              "defaultChoice": "Butter",
+              "choices": [
+                [
+                  "Butter",
+                  0.04
+                ]
+              ]
+            },
+            {
+              "id": "sweetener",
+              "label": "sugar",
+              "required": false,
+              "defaultChoice": "Sugar",
+              "choices": [
+                [
+                  "Sugar",
+                  0.03
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "id": "pumpkin-pie",
+          "label": "Pumpkin pie",
+          "unit": "serving",
+          "slots": [
+            {
+              "id": "vegetable",
+              "label": "pumpkin filling",
+              "required": true,
+              "defaultChoice": "Pumpkin",
+              "choices": [
+                [
+                  "Pumpkin",
+                  0.15
+                ]
+              ]
+            },
+            {
+              "id": "grain",
+              "label": "crust flour",
+              "required": true,
+              "defaultChoice": "Wheat Flour",
+              "choices": [
+                [
+                  "Wheat Flour",
+                  0.08
+                ]
+              ]
+            },
+            {
+              "id": "dairy",
+              "label": "butter",
+              "required": true,
+              "defaultChoice": "Butter",
+              "choices": [
+                [
+                  "Butter",
+                  0.04
+                ]
+              ]
+            }
+          ]
         }
       ]
     },

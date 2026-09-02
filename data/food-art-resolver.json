@@ -122,7 +122,9 @@
     "Yogurt": "assets/ingredients/ingredient_cream_carton.png",
     "Bread": "assets/ingredients/ingredient_bread_loaf.png",
     "Honey": "assets/ingredients/ingredient_preserve_jar.png",
-    "Lobster": "assets/ingredients/ingredient_blue_crab.png"
+    "Lobster": "assets/ingredients/ingredient_blue_crab.png",
+    "Pumpkin": "assets/ingredients/5star/pumpkin.png",
+    "Coffee": "assets/ingredients/5star/coffee-beans.png"
   },
   "rules": [
     {
