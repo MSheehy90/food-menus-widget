@@ -6,10 +6,16 @@
   const state = {
     catalog: null,
     restaurants: [],
+    menus: null,
     byId: new Map(),
     byName: new Map(),
+    processOutputs: new Set(),
     type: null,
     family: '__all__',
+    stage: 'all',
+    lockerSearch: '',
+    dishesSearch: '',
+    processSearch: '',
     selected: [],
     unlockedOnly: true,
     dish: null,
@@ -26,8 +32,13 @@
     processOutput: '',
     processOutputManual: false,
     processSlots: [],
-    processSlotFocus: 0
+    processSlotFocus: 0,
+    stationFilter: null,
+    fiveStarArt: null,
+    hqPlateGen: 0
   };
+
+  const FiveStar = () => window.FoodMenusFiveStar;
 
   const $ = (sel, root = document) => root.querySelector(sel);
 
@@ -153,12 +164,22 @@
     ));
   }
 
-  /** Icon-only unless art missing — then show name. */
+  /** Icon-only unless art missing — then show name. Stations use CSS/SVG glyph + name. */
   function artHtml(ing, cls = '') {
+    if (ing?.isStation || ing?.glyph) {
+      const glyph = ing.glyph === 'oven' ? 'oven' : 'gear';
+      return `<span class="station-glyph ${glyph}" aria-hidden="true"></span>`;
+    }
     if (ing?.art) {
       return `<img class="${cls}" src="${esc(ing.art)}" alt="" draggable="false" loading="lazy" decoding="async" />`;
     }
     return `<span class="name-fallback">${esc(ing?.name || '?')}</span>`;
+  }
+
+  function stationGlyphHtml(station) {
+    if (!station) return '';
+    const glyph = station.glyph === 'oven' ? 'oven' : 'gear';
+    return `<span class="station-glyph ${glyph}" aria-hidden="true"></span>`;
   }
 
   function resolveChainIngs(ing) {
@@ -167,9 +188,34 @@
   }
 
   function showView(id) {
-    ['view-home', 'view-dish', 'view-kept', 'view-gallery'].forEach((v) => {
+    ['view-home', 'view-dish', 'view-kept', 'view-gallery', 'view-dishes'].forEach((v) => {
       $(`#${v}`)?.classList.toggle('hidden', v !== id);
     });
+  }
+
+  /** Process-catalog outputs + multi-step processed items — not butchered primary cuts. */
+  function isMade(ing) {
+    if (!ing || ing.isStation) return false;
+    const name = String(ing.name || '').toLowerCase();
+    if (state.processOutputs.has(name)) return true;
+    if (ing.stage === 'processed' && (ing.chain?.length || 0) > 1) return true;
+    return false;
+  }
+
+  function matchesLockerSearch(ing, q) {
+    if (!q) return true;
+    return String(ing.name || '').toLowerCase().includes(q);
+  }
+
+  function rebuildProcessOutputs() {
+    const set = new Set();
+    const Proc = window.FoodMenusProcess;
+    const byOutput = state.processData?.byOutput || {};
+    Object.keys(byOutput).forEach((n) => set.add(String(n).toLowerCase()));
+    Object.values(state.processData?.catalog || {}).forEach((proc) => {
+      (Proc?.primaryOutputs(proc) || []).forEach((n) => set.add(String(n).toLowerCase()));
+    });
+    state.processOutputs = set;
   }
 
   function selectedIds() {
@@ -188,6 +234,66 @@
         ${artHtml(ing)}
       </div>
     `).join('');
+  }
+
+  function clearHqChrome(bowl) {
+    if (!bowl) return;
+    bowl.classList.remove('hq-plate', 'hq-has-photo');
+    bowl.querySelectorAll('.hq-cue, .hq-dish-img').forEach((n) => n.remove());
+  }
+
+  function hqContext(ingredients, extra = {}) {
+    const score = extra.score || S.scoreDish(ingredients, state.catalog);
+    const shop = restaurantById(extra.restaurantId ?? state.restaurantId);
+    return {
+      ingredients,
+      score,
+      starsTotal: score.stars?.total || 0,
+      dishName: extra.dishName ?? state.dishName,
+      name: extra.dishName ?? state.dishName,
+      restaurantId: extra.restaurantId ?? state.restaurantId,
+      restaurantName: extra.restaurantName ?? shop?.name ?? '',
+      restaurant: extra.restaurantName ?? shop?.name ?? '',
+      style: extra.style ?? legality().style
+    };
+  }
+
+  /**
+   * 5-star quality: swap stacked locker icons for HQ plated photo.
+   * Visual gate is artMap.visualThreshold (4.5); numeric stars stay honest.
+   */
+  function renderHqOrStack(bowl, stack, ingredients, extra = {}) {
+    if (!bowl || !stack) return;
+    clearHqChrome(bowl);
+    const gen = ++state.hqPlateGen;
+    const FS = FiveStar();
+    const artMap = state.fiveStarArt;
+    if (!FS || !artMap || !(ingredients || []).length) {
+      renderPlateStack(stack, ingredients, extra);
+      return;
+    }
+    const ctx = hqContext(ingredients, extra);
+    const resolved = FS.resolveCandidates(ctx, artMap);
+    if (!resolved.quality) {
+      renderPlateStack(stack, ingredients, extra);
+      return;
+    }
+
+    bowl.classList.add('hq-plate');
+    const cue = document.createElement('span');
+    cue.className = 'hq-cue';
+    cue.textContent = resolved.cue || '5-star quality';
+    bowl.appendChild(cue);
+
+    // Optimistic stack until a photo loads (or none do).
+    renderPlateStack(stack, ingredients, extra);
+
+    FS.pickLoadable(resolved.candidates).then((cand) => {
+      if (gen !== state.hqPlateGen) return;
+      if (!cand?.file) return; // keep stacked icons inside larger plate + cue
+      bowl.classList.add('hq-has-photo');
+      stack.innerHTML = `<img class="hq-dish-img" src="${esc(cand.file)}" alt="${esc(ctx.dishName || '5-star dish')}" draggable="false" />`;
+    });
   }
 
   function renderGlyphMeters(el, ingredients) {
@@ -291,6 +397,19 @@
   }
 
   /* —— locker —— */
+  function renderStageRail() {
+    const el = $('#stage-rail');
+    if (!el) return;
+    el.querySelectorAll('.stage-chip').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.stage === state.stage);
+      btn.onclick = () => {
+        state.stage = btn.dataset.stage || 'all';
+        renderStageRail();
+        renderGrid();
+      };
+    });
+  }
+
   function renderTypeRail() {
     const order = state.catalog.typeOrder;
     $('#type-rail').innerHTML = order.map((t) => `
@@ -325,7 +444,30 @@
     });
   }
 
+  function passStage(ing) {
+    if (state.stage === 'made') return isMade(ing);
+    if (state.stage === 'raw') return !isMade(ing);
+    return true;
+  }
+
   function familyIngredients() {
+    const q = (state.lockerSearch || '').trim().toLowerCase();
+    const seen = new Set();
+    const take = (ing) => {
+      if (!ing || seen.has(ing.id)) return false;
+      if (state.unlockedOnly && ing.unlocked === false) return false;
+      if (!passStage(ing)) return false;
+      if (!matchesLockerSearch(ing, q)) return false;
+      seen.add(ing.id);
+      return true;
+    };
+
+    // Search spans the whole locker so “ramen” finds noodles from any type chip.
+    if (q) {
+      return state.catalog.ingredients.filter(take)
+        .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+    }
+
     const hier = state.catalog.hierarchy[state.type] || {};
     let ids = [];
     if (state.family === '__all__') {
@@ -333,13 +475,7 @@
     } else {
       ids = hier[state.family] || [];
     }
-    const seen = new Set();
-    return ids.map((id) => state.byId.get(id)).filter(Boolean)
-      .filter((ing) => {
-        if (seen.has(ing.id)) return false;
-        seen.add(ing.id);
-        return state.unlockedOnly ? ing.unlocked !== false : true;
-      });
+    return ids.map((id) => state.byId.get(id)).filter(take);
   }
 
   function bindTileGestures(btn, ing) {
@@ -377,13 +513,16 @@
   function renderGrid() {
     const ings = familyIngredients();
     const sel = selectedIds();
+    const emptyMsg = state.lockerSearch.trim()
+      ? 'No ingredients match'
+      : (state.stage === 'made' ? 'No made ingredients here' : 'Empty family');
     $('#ingredient-grid').innerHTML = ings.map((ing) => `
-      <button type="button" class="ing-tile ${sel.has(ing.id) ? 'selected' : ''} ${ing.art ? '' : 'missing-art'}"
+      <button type="button" class="ing-tile ${sel.has(ing.id) ? 'selected' : ''} ${ing.art ? '' : 'missing-art'} ${isMade(ing) ? 'is-made' : ''}"
         data-id="${esc(ing.id)}" aria-label="${esc(ing.name)}">
-        ${ing.processed ? '<span class="badge">P</span>' : ''}
+        ${isMade(ing) ? '<span class="chain-cue" title="Process chain" aria-hidden="true"></span>' : ''}
         ${artHtml(ing)}
       </button>
-    `).join('') || `<p class="muted" style="grid-column:1/-1;text-align:center">Empty family</p>`;
+    `).join('') || `<p class="muted" style="grid-column:1/-1;text-align:center">${esc(emptyMsg)}</p>`;
 
     $('#ingredient-grid').querySelectorAll('.ing-tile').forEach((btn) => {
       const ing = state.byId.get(btn.dataset.id);
@@ -419,7 +558,7 @@
     state.detailIng = ing;
     const onPlate = selectedIds().has(ing.id);
     const chain = resolveChainIngs(ing);
-    const showChain = forceChain || ing.processed || chain.length > 1;
+    const showChain = forceChain || isMade(ing) || chain.length > 1;
 
     $('#detail-body').innerHTML = `
       <div class="detail-hero">
@@ -443,8 +582,13 @@
     const bowl = $('#plate-bowl');
     const stack = $('#plate-stack');
     bowl.classList.toggle('has-food', state.selected.length > 0);
-    renderPlateStack(stack, state.selected);
-    renderGlyphMeters($('#plate-meters'), state.selected);
+    const score = renderGlyphMeters($('#plate-meters'), state.selected);
+    renderHqOrStack(bowl, stack, state.selected, {
+      score,
+      dishName: state.dishName,
+      restaurantId: state.restaurantId,
+      style: legality().style
+    });
     renderRecipeList(state.selected);
     syncRestaurantFromPlate();
     renderRestaurantRail();
@@ -458,6 +602,7 @@
     btn.textContent = 'Create dish';
 
     const max = state.catalog.maxDishIngredients || 5;
+    const hq = FiveStar()?.isFiveStarQuality(score?.stars?.total, state.fiveStarArt);
     if (!state.selected.length) $('#tray-hint').textContent = '';
     else if (state.selected.length >= max && !canCreate) {
       $('#tray-hint').textContent = !legal.ok
@@ -467,9 +612,12 @@
     else if (!core.ok) $('#tray-hint').textContent = 'Need carb + protein on the plate';
     else {
       const shop = restaurantById(state.restaurantId);
-      $('#tray-hint').textContent = shop
+      const base = shop
         ? `Ready · ${shop.name}`
         : (legal.style && legal.style !== 'general' ? `Ready · ${legal.style}` : 'Ready to create');
+      $('#tray-hint').textContent = hq
+        ? `${base} · 5-star quality`
+        : base;
     }
   }
 
@@ -526,9 +674,10 @@
     const d = state.dish;
     if (!d) return;
     const hero = $('#dish-hero');
+    const hqReady = FiveStar()?.isFiveStarQuality(d.score?.stars?.total, state.fiveStarArt);
     hero.innerHTML = `
-      <div class="dish-plate-card">
-        <div class="plate-bowl has-food">
+      <div class="dish-plate-card ${hqReady ? 'hq-card' : ''}">
+        <div class="plate-bowl has-food" id="dish-bowl">
           <div class="plate-rim"></div>
           <div class="plate-well" id="dish-stack"></div>
         </div>
@@ -538,11 +687,18 @@
         <div class="dish-tags">
           ${d.restaurant ? `<span class="style-pill">${esc(d.restaurant)}</span>` : ''}
           <span class="style-pill">${esc(d.style || 'general')}</span>
+          ${hqReady ? '<span class="style-pill hq-pill">5-star quality</span>' : ''}
         </div>
       </div>
     `;
-    renderPlateStack($('#dish-stack'), d.ingredients);
-    renderGlyphMeters($('#dish-meters'), d.ingredients);
+    const score = renderGlyphMeters($('#dish-meters'), d.ingredients);
+    renderHqOrStack($('#dish-bowl'), $('#dish-stack'), d.ingredients, {
+      score: d.score || score,
+      dishName: d.name,
+      restaurantId: d.restaurantId,
+      restaurantName: d.restaurant,
+      style: d.style
+    });
     // reuse recipe renderer into dish list
     const list = $('#dish-recipe-list');
     const rows = sortedPlate(d.ingredients);
@@ -734,6 +890,132 @@
     });
   }
 
+  /* —— Dishes browse (kept + shop starters) —— */
+  function resolveMenuChoice(name) {
+    if (!name) return null;
+    return state.byName.get(String(name).toLowerCase()) || null;
+  }
+
+  function buildShopStarters() {
+    const max = state.catalog?.maxDishIngredients || 5;
+    const restaurants = state.menus?.restaurants || [];
+    const out = [];
+    restaurants.forEach((rest) => {
+      (rest.dishFamilies || []).forEach((fam) => {
+        const names = [];
+        (fam.slots || []).forEach((slot) => {
+          const choice = slot.defaultChoice;
+          if (choice) names.push(choice);
+          const extras = choice && slot.choiceExtras?.[choice];
+          if (Array.isArray(extras)) {
+            extras.forEach((row) => {
+              const n = Array.isArray(row) ? row[0] : row;
+              if (n) names.push(n);
+            });
+          }
+        });
+        const ings = [];
+        const seen = new Set();
+        names.forEach((n) => {
+          if (ings.length >= max) return;
+          const ing = resolveMenuChoice(n);
+          if (ing && !seen.has(ing.id)) {
+            seen.add(ing.id);
+            ings.push(ing);
+          }
+        });
+        out.push({
+          id: `starter:${rest.id}:${fam.id}`,
+          name: fam.label,
+          restaurantId: rest.id,
+          restaurant: rest.name,
+          source: 'shop',
+          ingredients: ings
+        });
+      });
+    });
+    return out;
+  }
+
+  function loadDishOntoPlate(dish) {
+    if (!dish) return;
+    setMode('dish');
+    const max = state.catalog.maxDishIngredients || 5;
+    const ings = hydrateIngredients(dish.ingredients || []).filter(Boolean).slice(0, max);
+    state.selected = ings.map((i) => ({ ...i }));
+    state.dishName = dish.name || '';
+    state.dishNameManual = true;
+    state.restaurantId = dish.restaurantId || null;
+    if (!state.restaurantId && dish.restaurant) {
+      const hit = RESTAURANTS.find((r) => r.name === dish.restaurant);
+      if (hit) state.restaurantId = hit.id;
+    }
+    renderTray();
+    renderGrid();
+    showView('view-home');
+    const shop = restaurantById(state.restaurantId);
+    setDriveStatus(shop
+      ? `Loaded “${state.dishName}” · ${shop.name}`
+      : `Loaded “${state.dishName}”`);
+  }
+
+  function dishCardHtml(d, { key, kind }) {
+    const shop = d.restaurant || restaurantById(d.restaurantId)?.name || '';
+    const stars = d.score?.stars?.display || '';
+    return `
+      <button type="button" class="dish-browse-card" data-kind="${esc(kind)}" data-key="${esc(key)}">
+        <div class="mini-plate" data-dish-stack="${esc(kind)}-${esc(key)}"></div>
+        <div class="dish-browse-meta">
+          <span class="dish-browse-name">${esc(d.name || 'Untitled')}</span>
+          ${shop ? `<span class="dish-browse-shop">${esc(shop)}</span>` : ''}
+          ${stars ? `<span class="dish-browse-stars">${esc(stars)}</span>` : ''}
+        </div>
+      </button>`;
+  }
+
+  function renderDishesBrowse() {
+    const el = $('#dishes-browse');
+    if (!el) return;
+    const q = (state.dishesSearch || '').trim().toLowerCase();
+    const match = (d) => {
+      if (!q) return true;
+      const hay = `${d.name || ''} ${d.restaurant || ''} ${restaurantById(d.restaurantId)?.name || ''}`.toLowerCase();
+      return hay.includes(q);
+    };
+
+    const kept = state.kept.filter(match);
+    const starters = buildShopStarters().filter(match);
+
+    el.innerHTML = `
+      <section class="dishes-section">
+        <h2 class="dishes-heading">Your plates</h2>
+        ${kept.length
+          ? `<div class="dishes-grid">${kept.map((d, i) => dishCardHtml(d, { key: String(i), kind: 'kept' })).join('')}</div>`
+          : `<p class="muted dishes-empty">No kept plates yet — Create dish or pick a shop starter</p>`}
+      </section>
+      <section class="dishes-section">
+        <h2 class="dishes-heading">Shop starters</h2>
+        <div class="dishes-grid">${starters.map((d, i) => dishCardHtml(d, { key: String(i), kind: 'shop' })).join('')}</div>
+      </section>
+    `;
+
+    kept.forEach((d, i) => {
+      renderPlateStack($(`.mini-plate[data-dish-stack="kept-${i}"]`), hydrateIngredients(d.ingredients));
+    });
+    starters.forEach((d, i) => {
+      renderPlateStack($(`.mini-plate[data-dish-stack="shop-${i}"]`), d.ingredients);
+    });
+
+    el.querySelectorAll('.dish-browse-card').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const kind = btn.dataset.kind;
+        const idx = Number(btn.dataset.key);
+        if (kind === 'kept') loadDishOntoPlate(kept[idx]);
+        else loadDishOntoPlate(starters[idx]);
+      });
+    });
+  }
+
   /* —— art gallery —— */
   function renderGallery() {
     const ings = state.catalog.ingredients.filter((i) => {
@@ -866,6 +1148,13 @@
 
   function resolveByNameOrId(key) {
     if (!key) return null;
+    if (String(key).startsWith('station:')) {
+      const name = String(key).slice('station:'.length);
+      return P().stationAsItem(state.processData?.stations, name)
+        || P().stationAsItem(state.processData?.stations, key);
+    }
+    const st = P().stationAsItem(state.processData?.stations, key);
+    if (st && P().isStationName(key, state.processData?.stations)) return st;
     return state.byId.get(key) || state.byName.get(String(key).toLowerCase()) || null;
   }
 
@@ -874,11 +1163,53 @@
     if (!proc) return;
     state.processId = processId;
     state.processOutput = outputName || P().primaryOutputs(proc)[0];
-    state.processSlots = P().requiredSlots(proc).map((s) => ({ ...s }));
-    state.processSlotFocus = 0;
+    state.processSlots = P().requiredSlots(proc, state.processData.stations).map((s) => ({ ...s }));
+    // Auto-bind station slot
+    state.processSlots.forEach((s) => {
+      if (s.station && !s.filledId) {
+        const st = s.stationItem || P().stationAsItem(state.processData.stations, s.name);
+        if (st) {
+          s.filledId = st.id;
+          s.stationItem = st;
+        }
+      }
+    });
+    state.processSlotFocus = state.processSlots.findIndex((s) => !s.station && !s.filledId);
+    if (state.processSlotFocus < 0) state.processSlotFocus = 0;
     const outInput = $('#output-name');
     if (outInput && !state.processOutputManual) outInput.value = state.processOutput;
     renderProcessAuthor();
+  }
+
+  function renderStationRail() {
+    const el = $('#station-rail');
+    if (!el || !state.processData) return;
+    const stations = state.processData.stations || [];
+    el.innerHTML = stations.map((s) => {
+      const active = state.stationFilter === s.name;
+      const glyph = s.glyph === 'oven' ? 'oven' : 'gear';
+      return `<button type="button" class="station-chip ${active ? 'active' : ''} kind-${esc(s.actionKind)}"
+        data-station="${esc(s.name)}" aria-pressed="${active}">
+        <span class="station-glyph ${glyph}" aria-hidden="true"></span>
+        <span>${esc(s.name)}</span>
+      </button>`;
+    }).join('');
+    el.querySelectorAll('.station-chip').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const name = btn.dataset.station;
+        state.stationFilter = state.stationFilter === name ? null : name;
+        // If filtering, prefer first matching process
+        const opts = P().listProcessOptions(state.processData.catalog, state.processData.byOutput, {
+          stationName: state.stationFilter
+        });
+        if (state.stationFilter && opts[0]) {
+          state.processOutputManual = false;
+          selectProcess(opts[0].id, opts[0].output);
+        } else {
+          renderProcessAuthor();
+        }
+      });
+    });
   }
 
   function renderProcessAuthor() {
@@ -886,23 +1217,27 @@
     const PD = state.processData;
     if (!PD) return;
 
-    const opts = P().listProcessOptions(PD.catalog, PD.byOutput);
+    renderStationRail();
+
+    const opts = P().listProcessOptions(PD.catalog, PD.byOutput, {
+      stationName: state.stationFilter
+    });
     const dl = $('#process-output-list');
     if (dl) {
-      dl.innerHTML = opts.map((o) => `<option value="${esc(o.output)}"></option>`).join('');
+      const all = P().listProcessOptions(PD.catalog, PD.byOutput);
+      dl.innerHTML = all.map((o) => `<option value="${esc(o.output)}"></option>`).join('');
     }
 
     const picker = $('#process-picker');
-    // Show recipes matching current output name, else popular defaults
-    const q = ($('#output-name')?.value || state.processOutput || '').trim().toLowerCase();
+    const q = (state.processSearch || '').trim().toLowerCase();
     const filtered = q
-      ? opts.filter((o) => o.output.toLowerCase().includes(q) || o.name.toLowerCase().includes(q))
-      : opts.filter((o) => /ramen|wheat|dehydr|chashu|rice noodle|miso|broth/i.test(o.output + o.name));
-    const show = (filtered.length ? filtered : opts).slice(0, 12);
-    picker.innerHTML = show.map((o) => `
+      ? opts.filter((o) => o.output.toLowerCase().includes(q) || o.name.toLowerCase().includes(q)
+        || String(o.station || '').toLowerCase().includes(q))
+      : opts;
+    picker.innerHTML = filtered.map((o) => `
       <button type="button" class="process-chip ${state.processId === o.id && state.processOutput === o.output ? 'active' : ''}"
         data-pid="${esc(o.id)}" data-out="${esc(o.output)}">${esc(o.output)}</button>
-    `).join('') || `<span class="muted">No process recipes</span>`;
+    `).join('') || `<span class="muted">${state.stationFilter ? 'No recipes for this station' : 'No matching processes'}</span>`;
     picker.querySelectorAll('.process-chip').forEach((btn) => {
       btn.addEventListener('click', () => {
         state.processOutputManual = false;
@@ -917,35 +1252,50 @@
     const createBtn = $('#btn-create-ingredient');
 
     if (!proc) {
-      chainEl.innerHTML = `<p class="muted">Pick an output process (try Ramen noodles)</p>`;
+      chainEl.innerHTML = `<p class="muted">Pick a station or process (Mill · Dehydrator · Oven)</p>`;
       slotsEl.innerHTML = '';
       shelfEl.hidden = true;
       createBtn.disabled = true;
-      $('#process-hint').textContent = 'Choose a process recipe, then fill required icons from the locker';
+      $('#process-hint').textContent = 'Tap Mill, Dehydrator, or Oven — then fill ingredient slots from the locker';
       return;
     }
 
-    const chain = P().upstreamChain(state.processOutput, PD.byOutput, PD.catalog);
-    chainEl.innerHTML = chain.map((name, i) => {
-      const ing = resolveByNameOrId(name) || { name, art: '' };
+    const nodes = P().visualChain(state.processOutput, proc, PD.byOutput, PD.catalog, PD.stations);
+    chainEl.innerHTML = nodes.map((node, i) => {
+      if (node.kind === 'station') {
+        const st = node.station;
+        return `${i ? '<span class="chain-arrow-sm">→</span>' : ''}
+          <div class="chain-node station-node" title="${esc(st.name)}">
+            ${stationGlyphHtml(st)}
+            <span class="station-node-label">${esc(st.name)}</span>
+          </div>`;
+      }
+      const ing = resolveByNameOrId(node.name) || { name: node.name, art: '' };
       return `${i ? '<span class="chain-arrow-sm">→</span>' : ''}
-        <div class="chain-node" title="${esc(name)}">${artHtml(ing)}</div>`;
+        <div class="chain-node" title="${esc(node.name)}">${artHtml(ing)}</div>`;
     }).join('');
 
     slotsEl.innerHTML = state.processSlots.map((slot, idx) => {
-      const filled = slot.filledId ? state.byId.get(slot.filledId) : null;
-      const placeholder = { name: slot.name, art: '' };
-      const show = filled || placeholder;
+      let show;
+      if (slot.station) {
+        show = slot.stationItem || P().stationAsItem(PD.stations, slot.name) || { name: slot.name, glyph: 'gear', isStation: true };
+      } else {
+        const filled = slot.filledId ? state.byId.get(slot.filledId) : null;
+        show = filled || { name: slot.name, art: '' };
+      }
       const qty = slot.station ? 'station' : (slot.qty != null ? String(slot.qty) : '');
+      const empty = !slot.station && !slot.filledId;
       return `
-        <li class="process-slot ${filled ? '' : 'empty'} ${state.processSlotFocus === idx ? 'active-target' : ''}" data-slot="${idx}">
+        <li class="process-slot ${empty ? 'empty' : ''} ${slot.station ? 'is-station' : ''} ${state.processSlotFocus === idx ? 'active-target' : ''}" data-slot="${idx}">
           <span class="slot-ico">${artHtml(show)}</span>
           <span class="slot-qty">${esc(qty)}</span>
-          <span class="slot-name">${esc(slot.name)}${slot.station && !filled ? ' (no art)' : ''}</span>
+          <span class="slot-name">${esc(slot.name)}</span>
         </li>`;
     }).join('');
     slotsEl.querySelectorAll('.process-slot').forEach((row) => {
       row.addEventListener('click', () => {
+        const slot = state.processSlots[Number(row.dataset.slot)];
+        if (slot?.station) return; // stations auto-bound
         state.processSlotFocus = Number(row.dataset.slot);
         renderProcessAuthor();
       });
@@ -960,39 +1310,45 @@
         return d != null ? `${side.item}: ${d}d shelf` : `${side.item}`;
       };
       shelfEl.innerHTML = `
-        <div class="muted">Process time · ${shelf.processDays} day(s)</div>
+        <div class="muted">Process time · ${shelf.processDays} day(s)${proc.station ? ` · ${esc(proc.station)}` : ''}</div>
         <div class="shelf-row"><span>Before</span><span>${esc(fmt(shelf.before))}</span></div>
         <div class="shelf-row"><span>After</span><span>${esc(fmt(shelf.after))}</span></div>
       `;
+    } else if (proc.station) {
+      shelfEl.hidden = false;
+      shelfEl.innerHTML = `<div class="muted">Station · ${esc(proc.station)} · ${shelf.processDays} day(s)</div>`;
     } else {
       shelfEl.hidden = true;
     }
 
-    const ready = state.processSlots.every((s) => s.filledId || (s.station && resolveByNameOrId(s.name)));
-    // Auto-fill station-only slots from catalog by name if present (even without art)
+    const ready2 = state.processSlots.every((s) => Boolean(s.filledId) || s.station);
+    // ensure station filled
     state.processSlots.forEach((s) => {
-      if (!s.filledId && s.station) {
-        const st = resolveByNameOrId(s.name);
-        if (st) s.filledId = st.id;
+      if (s.station && !s.filledId) {
+        const st = s.stationItem || P().stationAsItem(PD.stations, s.name);
+        if (st) { s.filledId = st.id; s.stationItem = st; }
       }
     });
-    const ready2 = state.processSlots.every((s) => Boolean(s.filledId));
-    createBtn.disabled = !ready2 || !state.processOutput;
-    $('#process-hint').textContent = ready2
-      ? `Ready to create ${state.processOutput}`
-      : 'Tap a dashed slot, then tap a locker icon to fill it';
+    const ready = state.processSlots.every((s) => Boolean(s.filledId));
+    createBtn.disabled = !ready || !state.processOutput;
+    $('#process-hint').textContent = ready
+      ? `Ready to create ${state.processOutput}${proc.station ? ` on ${proc.station}` : ''}`
+      : 'Tap a dashed ingredient slot, then tap a locker icon';
   }
 
   function fillProcessSlot(ing) {
     if (state.mode !== 'ingredient' || !state.processSlots.length) return;
+    if (ing?.isStation) return;
     let idx = state.processSlotFocus;
-    if (idx == null || idx < 0) idx = state.processSlots.findIndex((s) => !s.filledId);
-    if (idx < 0) idx = 0;
+    if (idx == null || idx < 0 || state.processSlots[idx]?.station) {
+      idx = state.processSlots.findIndex((s) => !s.station && !s.filledId);
+    }
+    if (idx < 0) idx = state.processSlots.findIndex((s) => !s.station);
+    if (idx < 0) return;
     const slot = state.processSlots[idx];
-    if (!slot) return;
-    // Prefer matching name; allow any fill for authoring flexibility
+    if (!slot || slot.station) return;
     slot.filledId = ing.id;
-    const next = state.processSlots.findIndex((s, i) => i > idx && !s.filledId);
+    const next = state.processSlots.findIndex((s, i) => i > idx && !s.station && !s.filledId);
     state.processSlotFocus = next >= 0 ? next : idx;
     renderProcessAuthor();
   }
@@ -1000,15 +1356,21 @@
   function createIngredient() {
     const proc = state.processData?.catalog?.[state.processId];
     if (!proc || !state.processOutput) return;
-    // Auto-bind station slots by name (Dehydrator may have no art)
+    // Auto-bind station slots (virtual — not locker food)
     state.processSlots.forEach((s) => {
-      if (!s.filledId) {
+      if (s.station) {
+        const st = s.stationItem || P().stationAsItem(state.processData.stations, s.name);
+        if (st) {
+          s.filledId = st.id;
+          s.stationItem = st;
+        }
+      } else if (!s.filledId) {
         const match = resolveByNameOrId(s.name);
-        if (match) s.filledId = match.id;
+        if (match && !match.isStation) s.filledId = match.id;
       }
     });
     if (!state.processSlots.every((s) => s.filledId)) {
-      $('#process-hint').textContent = 'Fill every required input from the locker';
+      $('#process-hint').textContent = 'Fill every required ingredient from the locker';
       renderProcessAuthor();
       return;
     }
@@ -1048,6 +1410,7 @@
       input_ids: state.processSlots.map((s) => s.filledId).join(','),
       input_names: state.processSlots.map((s) => s.name).join(' · '),
       station: proc.station || '',
+      action_kind: proc.actionKind || '',
       process_days: proc.days ?? '',
       shelf_before: shelf.before?.days ?? '',
       shelf_after: shelf.after?.days ?? ing.shelfDays ?? '',
@@ -1100,6 +1463,11 @@
     $('#btn-back-home').addEventListener('click', () => showView('view-home'));
     $('#btn-back-from-kept').addEventListener('click', () => showView('view-home'));
     $('#btn-back-from-gallery').addEventListener('click', () => showView('view-home'));
+    $('#btn-back-from-dishes')?.addEventListener('click', () => showView('view-home'));
+    $('#btn-dishes')?.addEventListener('click', () => {
+      renderDishesBrowse();
+      showView('view-dishes');
+    });
     $('#btn-kept').addEventListener('click', () => { renderKept(); showView('view-kept'); });
     $('#btn-gallery').addEventListener('click', () => {
       state.galleryMode = 'have';
@@ -1115,6 +1483,19 @@
     $('#btn-save-drive').addEventListener('click', () => { saveToDrive(); });
     $('#btn-sync-pull').addEventListener('click', () => { pullFromSheet(); });
 
+    $('#locker-search')?.addEventListener('input', (e) => {
+      state.lockerSearch = e.target.value || '';
+      renderGrid();
+    });
+    $('#process-search')?.addEventListener('input', (e) => {
+      state.processSearch = e.target.value || '';
+      renderProcessAuthor();
+    });
+    $('#dishes-search')?.addEventListener('input', (e) => {
+      state.dishesSearch = e.target.value || '';
+      renderDishesBrowse();
+    });
+
     $('#detail-dialog').addEventListener('close', () => {
       if ($('#detail-dialog').returnValue === 'toggle' && state.detailIng) {
         addToPlate(state.detailIng);
@@ -1128,6 +1509,24 @@
     state.catalog = await res.json();
     const procRes = await fetch('data/process-catalog.json');
     state.processData = P().loadCatalog(await procRes.json());
+    rebuildProcessOutputs();
+    try {
+      const menuRes = await fetch('data/restaurant-menus-v1.json');
+      state.menus = await menuRes.json();
+    } catch {
+      state.menus = { restaurants: [] };
+    }
+    // HQ 5-star art map — missing file degrades to stacked icons only
+    try {
+      const artRes = await fetch('data/five-star-art.json');
+      if (artRes.ok) {
+        state.fiveStarArt = FiveStar().loadArtMap(await artRes.json());
+      } else {
+        state.fiveStarArt = null;
+      }
+    } catch {
+      state.fiveStarArt = null;
+    }
 
     await Sync().boot(state.catalog, {
       onStatus: setDriveStatus,
@@ -1149,11 +1548,13 @@
     state.mode = 'dish';
     state.type = state.catalog.typeOrder[0];
     state.family = '__all__';
-    // Default process highlight: ramen noodles
+    state.stage = 'all';
+    // Default process highlight: ramen noodles (full list still browsable)
     const ramen = P().listProcessOptions(state.processData.catalog, state.processData.byOutput)
       .find((o) => o.output === 'Ramen noodles');
     if (ramen) selectProcess(ramen.id, ramen.output);
 
+    renderStageRail();
     renderTypeRail();
     renderFamilies();
     renderGrid();

@@ -20,19 +20,18 @@
     "Fruit",
     "Dairy",
     "Fat",
-    "Other",
-    "Equipment"
+    "Other"
   ],
   "typeIcons": {
-    "Carb": "\ud83c\udf3e",
-    "Protein": "\ud83e\udd69",
-    "Broth": "\ud83e\udd63",
-    "Spice": "\ud83c\udf36\ufe0f",
-    "Vegetable": "\ud83e\udd6c",
-    "Fruit": "\ud83c\udf4e",
-    "Dairy": "\ud83e\udd5b",
-    "Fat": "\ud83e\uddc8",
-    "Other": "\ud83d\udce6"
+    "Carb": "🌾",
+    "Protein": "🥩",
+    "Broth": "🥣",
+    "Spice": "🌶️",
+    "Vegetable": "🥬",
+    "Fruit": "🍎",
+    "Dairy": "🥛",
+    "Fat": "🧈",
+    "Other": "📦"
   },
   "styleRules": {
     "ramen": {
@@ -2110,7 +2109,7 @@
         "Egg",
         "Whole eggs"
       ],
-      "notes": "Whole egg adds hunger fill only \u2014 no quality stars.",
+      "notes": "Whole egg adds hunger fill only — no quality stars.",
       "hungerKey": "wholeEgg",
       "flavorKey": "other"
     },
@@ -2400,7 +2399,7 @@
       "exclusive": null,
       "process": {
         "id": "beef_broth",
-        "name": "Cattle bones \u2192 beef pho broth",
+        "name": "Cattle bones → beef pho broth",
         "days": 1,
         "inputs": {
           "Cattle bones": 8,
@@ -2491,7 +2490,7 @@
       "exclusive": null,
       "process": {
         "id": "chashu",
-        "name": "Pork belly \u2192 chashu",
+        "name": "Pork belly → chashu",
         "days": 1,
         "inputs": {
           "Pork belly": 1,
@@ -2542,7 +2541,7 @@
       "exclusive": null,
       "process": {
         "id": "milk_to_cheese",
-        "name": "Cow milk \u2192 cheese + whey",
+        "name": "Cow milk → cheese + whey",
         "days": 1,
         "inputs": {
           "Cow milk": 10
@@ -2586,7 +2585,7 @@
       "exclusive": null,
       "process": {
         "id": "chicken_broth",
-        "name": "Chicken bones \u2192 chicken pho broth",
+        "name": "Chicken bones → chicken pho broth",
         "days": 1,
         "inputs": {
           "Chickens bones": 5,
@@ -2648,7 +2647,7 @@
       "exclusive": null,
       "process": {
         "id": "chocolate",
-        "name": "Cocoa beans \u2192 chocolate",
+        "name": "Cocoa beans → chocolate",
         "days": 1,
         "inputs": {
           "Cocoa beans": 0.55,
@@ -2806,7 +2805,7 @@
       "exclusive": null,
       "process": {
         "id": "menma",
-        "name": "Bamboo shoots \u2192 menma",
+        "name": "Bamboo shoots → menma",
         "days": 14,
         "inputs": {
           "Bamboo shoots": 1,
@@ -2856,7 +2855,7 @@
       "exclusive": null,
       "process": {
         "id": "rice_milling",
-        "name": "Mill paddy \u2192 edible rice",
+        "name": "Mill paddy → edible rice",
         "days": 0,
         "inputs": {
           "Paddy rice": 1
@@ -2900,7 +2899,7 @@
       "exclusive": null,
       "process": {
         "id": "miso",
-        "name": "Soybeans + rice koji \u2192 miso",
+        "name": "Soybeans + rice koji → miso",
         "days": 180,
         "inputs": {
           "Soybeans": 0.45,
@@ -2954,7 +2953,7 @@
       "exclusive": null,
       "process": {
         "id": "mung_sprouts",
-        "name": "Mung beans \u2192 bean sprouts",
+        "name": "Mung beans → bean sprouts",
         "days": 5,
         "inputs": {
           "Mung beans": 1,
@@ -3004,7 +3003,7 @@
       "exclusive": null,
       "process": {
         "id": "nori",
-        "name": "Seaweed \u2192 nori",
+        "name": "Seaweed → nori",
         "days": 1,
         "inputs": {
           "Seaweed": 1
@@ -3048,7 +3047,7 @@
       "exclusive": null,
       "process": {
         "id": "pork_broth",
-        "name": "Pig bones \u2192 ramen pork broth",
+        "name": "Pig bones → ramen pork broth",
         "days": 1,
         "inputs": {
           "Pigs bones": 8,
@@ -3106,7 +3105,7 @@
       },
       "process": {
         "id": "ramen_noodles",
-        "name": "Wheat flour \u2192 fresh ramen noodles",
+        "name": "Wheat flour → fresh ramen noodles",
         "days": 0,
         "inputs": {
           "Wheat flour": 0.75,
@@ -3191,7 +3190,7 @@
       "exclusive": null,
       "process": {
         "id": "rice_flour",
-        "name": "Grind rice \u2192 rice flour",
+        "name": "Grind rice → rice flour",
         "days": 0,
         "inputs": {
           "Milled rice": 1
@@ -3236,7 +3235,7 @@
       "exclusive": null,
       "process": {
         "id": "rice_koji",
-        "name": "Rice \u2192 rice koji",
+        "name": "Rice → rice koji",
         "days": 2,
         "inputs": {
           "Milled rice": 1,
@@ -3289,7 +3288,7 @@
       },
       "process": {
         "id": "rice_noodles",
-        "name": "Rice flour \u2192 fresh rice noodles",
+        "name": "Rice flour → fresh rice noodles",
         "days": 0,
         "inputs": {
           "Rice flour": 0.8,
@@ -3372,7 +3371,7 @@
       "exclusive": null,
       "process": {
         "id": "soy_sauce",
-        "name": "Soybeans + wheat \u2192 soy sauce",
+        "name": "Soybeans + wheat → soy sauce",
         "days": 240,
         "inputs": {
           "Soybeans": 0.3,
@@ -3599,7 +3598,7 @@
       ],
       "kcal": 60,
       "upstream": "",
-      "harvest": "harvest mature core/pi\u00f1a for syrup/inulin; destructive to rosette",
+      "harvest": "harvest mature core/piña for syrup/inulin; destructive to rosette",
       "artStatus": "missing",
       "afterHarvest": "",
       "servingQty": 1,
@@ -5305,7 +5304,7 @@
       ],
       "kcal": 15,
       "upstream": "Mushroom spawn",
-      "harvest": "pick flushes roughly 7\u201310 days apart during production",
+      "harvest": "pick flushes roughly 7–10 days apart during production",
       "artStatus": "image",
       "afterHarvest": "",
       "servingQty": 1,
@@ -6342,7 +6341,7 @@
       ],
       "kcal": 142,
       "upstream": "",
-      "harvest": "lift corm after ~5\u201312 months depending cultivar",
+      "harvest": "lift corm after ~5–12 months depending cultivar",
       "artStatus": "missing",
       "afterHarvest": "",
       "servingQty": 0.5,
@@ -6816,7 +6815,7 @@
       "exclusive": null,
       "process": {
         "id": "wheat_milling",
-        "name": "Mill wheat \u2192 flour",
+        "name": "Mill wheat → flour",
         "days": 0,
         "inputs": {
           "Wheat grain": 1
@@ -6842,7 +6841,7 @@
       "stageRaw": "Processed",
       "flavor": [],
       "kcal": 27,
-      "upstream": "Cow Milk \u2192 Cheese",
+      "upstream": "Cow Milk → Cheese",
       "harvest": "collect whey",
       "artStatus": "rule",
       "afterHarvest": "",
@@ -7776,7 +7775,7 @@
     },
     {
       "id": "boiled-egg",
-      "name": "\u00bd boiled egg",
+      "name": "½ boiled egg",
       "group": "Protein",
       "pyramid": "Protein",
       "category": "Egg",
@@ -7797,7 +7796,7 @@
       "chain": [
         "Eggs",
         "Boiled egg",
-        "\u00bd boiled egg"
+        "½ boiled egg"
       ],
       "art": "assets/ingredients/1_supply_brown_speckled_eggs.png",
       "unlocked": true,
@@ -7815,7 +7814,7 @@
     },
     {
       "id": "seasoned-boiled-egg",
-      "name": "\u00bd seasoned boiled egg",
+      "name": "½ seasoned boiled egg",
       "group": "Protein",
       "pyramid": "Protein",
       "category": "Egg",
@@ -7837,7 +7836,7 @@
         "Eggs",
         "Boiled egg",
         "Seasoned",
-        "\u00bd seasoned boiled egg"
+        "½ seasoned boiled egg"
       ],
       "art": "assets/ingredients/1_supply_brown_speckled_eggs.png",
       "unlocked": true,
@@ -7888,30 +7887,43 @@
       "process": "dehydrate_ramen_noodles"
     },
     {
-      "id": "dehydrator",
-      "name": "Dehydrator",
-      "group": "Equipment",
-      "pyramid": "Equipment",
-      "category": "Station",
-      "type": "Station",
-      "stage": "primary",
-      "stageRaw": "Station",
-      "uiType": "Equipment",
-      "uiFamily": "Station",
-      "processed": false,
+      "id": "chili-oil-with-black-garlic",
+      "name": "Chili oil with black garlic",
+      "group": "Spice",
+      "pyramid": "Spices",
+      "category": "Condiment",
+      "type": "",
+      "stage": "processed",
+      "stageRaw": "Processed",
+      "flavor": [
+        "spicy",
+        "umami"
+      ],
+      "kcal": 45,
+      "upstream": "Chili pepper + garlic + oil",
+      "harvest": "infuse chili oil with black garlic",
+      "artStatus": "MISSING",
+      "afterHarvest": "",
+      "servingQty": 1,
+      "servingUnit": "tbsp",
+      "uiType": "Spice",
+      "uiFamily": "Chile",
+      "processed": true,
       "chain": [
-        "Dehydrator"
+        "Chili Pepper",
+        "Garlic",
+        "Chili oil with black garlic"
       ],
       "art": "",
-      "artStatus": "MISSING",
-      "kcal": null,
-      "servingQty": 1,
-      "servingUnit": "station",
-      "hungerKey": null,
-      "flavorKey": null,
-      "starRoles": [],
       "unlocked": true,
-      "isStation": true
+      "exclusive": null,
+      "starRoles": [
+        "complexCondiment"
+      ],
+      "hungerKey": "other",
+      "flavorKey": "spice",
+      "shelfDays": 180,
+      "updatedAt": "2026-09-02T18:00:00.000Z"
     }
   ],
   "hierarchy": {
@@ -8085,7 +8097,8 @@
     "Spice": {
       "Chile": [
         "chile-pepper",
-        "chili-pepper"
+        "chili-pepper",
+        "chili-oil-with-black-garlic"
       ],
       "Spice": [
         "cinnamon",
@@ -8269,11 +8282,6 @@
       "Wine": [
         "white-wine"
       ]
-    },
-    "Equipment": {
-      "Station": [
-        "dehydrator"
-      ]
     }
   },
   "starTable": {
@@ -8307,11 +8315,11 @@
     },
     "halfBoiledEgg": {
       "stars": 0.25,
-      "label": "\u00bd boiled egg"
+      "label": "½ boiled egg"
     },
     "halfSeasonedBoiledEgg": {
       "stars": 0.5,
-      "label": "\u00bd seasoned boiled egg"
+      "label": "½ seasoned boiled egg"
     }
   },
   "starExample": {
@@ -8354,11 +8362,11 @@
         "stars": 0.5
       },
       {
-        "item": "\u00bd boiled egg",
+        "item": "½ boiled egg",
         "stars": 0.25
       },
       {
-        "item": "\u00bd seasoned boiled egg",
+        "item": "½ seasoned boiled egg",
         "stars": 0.5
       },
       {
@@ -8375,11 +8383,11 @@
     },
     "halfBoiledEgg": {
       "fill": 0.5,
-      "label": "\u00bd boiled egg (satiation)"
+      "label": "½ boiled egg (satiation)"
     },
     "halfSeasonedBoiledEgg": {
       "fill": 0.5,
-      "label": "\u00bd seasoned boiled egg (satiation)"
+      "label": "½ seasoned boiled egg (satiation)"
     },
     "defaultProtein": {
       "fill": 0.35,
@@ -8448,11 +8456,11 @@
     "flavor": {
       "spice": {
         "fill": 1.0,
-        "label": "Spice fills flavor \u2192 happiness/health"
+        "label": "Spice fills flavor → happiness/health"
       },
       "herb": {
         "fill": 1.0,
-        "label": "Herbs fill flavor \u2192 happiness/health"
+        "label": "Herbs fill flavor → happiness/health"
       },
       "condiment": {
         "fill": 0.6,
@@ -8469,7 +8477,7 @@
     }
   },
   "flavorOutcomes": {
-    "note": "Flavor fill impacts happiness and health \u2014 not hunger, not quality stars.",
+    "note": "Flavor fill impacts happiness and health — not hunger, not quality stars.",
     "happinessPerFlavor": 1.0,
     "healthPerFlavor": 0.8
   },

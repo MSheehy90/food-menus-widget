@@ -19,7 +19,9 @@
         "label": "USDA ERS wheat data",
         "url": "https://www.ers.usda.gov/data-products/wheat-data/documentation",
         "note": "72% flour extraction rate used in ERS milling calculations."
-      }
+      },
+      "station": "Mill",
+      "actionKind": "industrial"
     },
     "rice_milling": {
       "name": "Mill paddy \u2192 edible rice",
@@ -40,7 +42,9 @@
         "label": "IRRI Rice Knowledge Bank",
         "url": "https://www.knowledgebank.irri.org/step-by-step-production/postharvest/milling/producing-good-quality-milled-rice/milling-yields",
         "note": "Uses 68% conservative value within IRRI potential 68\u201372% range; modern multistage mills are typically 65\u201370%."
-      }
+      },
+      "station": "Mill",
+      "actionKind": "industrial"
     },
     "milk_to_cheese": {
       "name": "Cow milk \u2192 cheese + whey",
@@ -61,7 +65,8 @@
         "label": "Simulation assumption",
         "url": "",
         "note": "~10% cheese solids from milk; remainder whey for feed or further processing."
-      }
+      },
+      "actionKind": "mix"
     },
     "rice_flour": {
       "name": "Grind rice \u2192 rice flour",
@@ -82,7 +87,9 @@
         "label": "Simulation assumption",
         "url": "",
         "note": "2% handling/grinding loss is explicit and editable in data; replace when a validated train mill spec exists."
-      }
+      },
+      "station": "Mill",
+      "actionKind": "industrial"
     },
     "rice_noodles": {
       "name": "Rice flour \u2192 fresh rice noodles",
@@ -105,7 +112,8 @@
         "label": "House production standard",
         "url": "",
         "note": "Mass-balanced wet-noodle standard; ingredient identities are fixed, ratio remains an explicit simulation assumption."
-      }
+      },
+      "actionKind": "mix"
     },
     "ramen_noodles": {
       "name": "Wheat flour \u2192 fresh ramen noodles",
@@ -129,7 +137,8 @@
         "label": "House production standard",
         "url": "",
         "note": "Fresh alkaline wheat-noodle BOM. No mystery noodle units: flour, water, salt and kansui are all consumed."
-      }
+      },
+      "actionKind": "mix"
     },
     "mung_sprouts": {
       "name": "Mung beans \u2192 bean sprouts",
@@ -149,7 +158,8 @@
         "label": "Oregon State University Sprout Production",
         "url": "https://horticulture.oregonstate.edu/oregon-vegetables/sprout-production-0",
         "note": "Mung beans increase about six-fold and are ready in 4\u20135 days under proper conditions; model uses 5 days."
-      }
+      },
+      "actionKind": "mix"
     },
     "rice_koji": {
       "name": "Rice \u2192 rice koji",
@@ -172,7 +182,8 @@
         "label": "Japan MAFF traditional miso",
         "url": "https://www.maff.go.jp/e/policies/market/dento_syoku/bunrui/syouyu-miso.html",
         "note": "MAFF establishes rice/barley/soy koji as the fermentation base; exact train batch hydration/loss is an explicit house assumption."
-      }
+      },
+      "actionKind": "mix"
     },
     "miso": {
       "name": "Soybeans + rice koji \u2192 miso",
@@ -196,7 +207,8 @@
         "label": "Japan MAFF traditional miso",
         "url": "https://www.maff.go.jp/e/policies/market/dento_syoku/bunrui/syouyu-miso.html",
         "note": "MAFF: steamed soybeans + koji + salt; aging ranges from days to two years. Train standard uses 180 days and a visible 45/45/10 dry-input ratio."
-      }
+      },
+      "actionKind": "mix"
     },
     "soy_sauce": {
       "name": "Soybeans + wheat \u2192 soy sauce",
@@ -221,7 +233,8 @@
         "label": "Japan MAFF soy sauce",
         "url": "https://www.maff.go.jp/e/policies/market/dento_syoku/bunrui/syouyu-miso.html",
         "note": "Koikuchi uses equal soybean and wheat in koji and approximately 8 months fermentation/aging. Model uses 240 days."
-      }
+      },
+      "actionKind": "mix"
     },
     "beef_broth": {
       "name": "Cattle bones \u2192 beef pho broth",
@@ -251,7 +264,9 @@
         "label": "House pho stock standard",
         "url": "",
         "note": "All aromatics/spices are explicit; meat cuts such as brisket remain optional serving additions, not broth requirements."
-      }
+      },
+      "station": "Oven",
+      "actionKind": "cook"
     },
     "chicken_broth": {
       "name": "Chicken bones \u2192 chicken pho broth",
@@ -281,7 +296,9 @@
         "label": "House pho stock standard",
         "url": "",
         "note": "Measured chicken-stock route with the same traceable aromatic chain."
-      }
+      },
+      "station": "Oven",
+      "actionKind": "cook"
     },
     "pork_broth": {
       "name": "Pig bones \u2192 ramen pork broth",
@@ -306,7 +323,9 @@
         "label": "House ramen stock standard",
         "url": "",
         "note": "Measured pork-bone stock route; restaurant toppings are tracked separately."
-      }
+      },
+      "station": "Oven",
+      "actionKind": "cook"
     },
     "nori": {
       "name": "Seaweed \u2192 nori",
@@ -327,7 +346,8 @@
         "label": "Simulation assumption",
         "url": "",
         "note": "Drying yield is explicit and should be replaced by measured seaweed moisture data for the selected cultivar."
-      }
+      },
+      "actionKind": "mix"
     },
     "menma": {
       "name": "Bamboo shoots \u2192 menma",
@@ -350,7 +370,8 @@
         "label": "Simulation assumption",
         "url": "",
         "note": "Fermentation duration and mass balance are visible assumptions pending a selected production method."
-      }
+      },
+      "actionKind": "mix"
     },
     "chocolate": {
       "name": "Cocoa beans \u2192 chocolate",
@@ -373,7 +394,8 @@
         "label": "House chocolate standard",
         "url": "",
         "note": "Simple train formulation so dessert demand traces to cocoa, sugar and milk; not a universal chocolate formula."
-      }
+      },
+      "actionKind": "mix"
     },
     "chashu": {
       "name": "Pork belly \u2192 chashu",
@@ -399,15 +421,16 @@
         "label": "House ramen topping standard",
         "url": "",
         "note": "Traceable pork/soy/sugar/aromatic route; exact seasoning ratio is a house standard."
-      }
+      },
+      "station": "Oven",
+      "actionKind": "cook"
     },
     "dehydrate_ramen_noodles": {
       "name": "Dehydrator + fresh ramen \u2192 dehydrated ramen",
       "days": 1,
       "station": "Dehydrator",
       "batchInput": {
-        "Ramen noodles": 1,
-        "Dehydrator": 1
+        "Ramen noodles": 1
       },
       "outputs": {
         "Dehydrated ramen noodles": 0.9
@@ -432,7 +455,8 @@
         "label": "Dish star scoring + process authoring",
         "url": "",
         "note": "Consumes fresh ramen + dehydrator station; writes a new ingredient with longer shelf life and dehydratedCarb star role."
-      }
+      },
+      "actionKind": "industrial"
     }
   },
   "byOutput": {
@@ -445,7 +469,9 @@
           "Wheat grain": 1
         },
         "outputQty": 0.72,
-        "evidence": "Published processing baseline"
+        "evidence": "Published processing baseline",
+        "station": "Mill",
+        "actionKind": "industrial"
       }
     ],
     "Milled rice": [
@@ -457,7 +483,9 @@
           "Paddy rice": 1
         },
         "outputQty": 0.68,
-        "evidence": "Published processing baseline"
+        "evidence": "Published processing baseline",
+        "station": "Mill",
+        "actionKind": "industrial"
       }
     ],
     "Cheese": [
@@ -481,7 +509,9 @@
           "Milled rice": 1
         },
         "outputQty": 0.98,
-        "evidence": "Snowpiercer engineering assumption"
+        "evidence": "Snowpiercer engineering assumption",
+        "station": "Mill",
+        "actionKind": "industrial"
       }
     ],
     "Rice noodles": [
@@ -591,7 +621,9 @@
           "Salt": 0.15
         },
         "outputQty": 10,
-        "evidence": "Snowpiercer house BOM"
+        "evidence": "Snowpiercer house BOM",
+        "station": "Oven",
+        "actionKind": "cook"
       }
     ],
     "Chicken broth": [
@@ -614,7 +646,9 @@
           "Salt": 0.12
         },
         "outputQty": 10,
-        "evidence": "Snowpiercer house BOM"
+        "evidence": "Snowpiercer house BOM",
+        "station": "Oven",
+        "actionKind": "cook"
       }
     ],
     "Pork broth": [
@@ -632,7 +666,9 @@
           "Salt": 0.1
         },
         "outputQty": 10,
-        "evidence": "Snowpiercer house BOM"
+        "evidence": "Snowpiercer house BOM",
+        "station": "Oven",
+        "actionKind": "cook"
       }
     ],
     "Nori": [
@@ -689,7 +725,9 @@
           "Water": 0.2
         },
         "outputQty": 0.9,
-        "evidence": "Snowpiercer house BOM"
+        "evidence": "Snowpiercer house BOM",
+        "station": "Oven",
+        "actionKind": "cook"
       }
     ],
     "Dehydrated ramen noodles": [
@@ -698,12 +736,33 @@
         "name": "Dehydrator + fresh ramen \u2192 dehydrated ramen",
         "days": 1,
         "inputs": {
-          "Ramen noodles": 1,
-          "Dehydrator": 1
+          "Ramen noodles": 1
         },
         "outputQty": 0.9,
-        "evidence": "Melinda dish scoring lock \u2014 dehydrated noodles are a separate shelf item"
+        "evidence": "Melinda dish scoring lock \u2014 dehydrated noodles are a separate shelf item",
+        "station": "Dehydrator",
+        "actionKind": "industrial"
       }
     ]
-  }
+  },
+  "stations": [
+    {
+      "id": "mill",
+      "name": "Mill",
+      "actionKind": "industrial",
+      "glyph": "gear"
+    },
+    {
+      "id": "dehydrator",
+      "name": "Dehydrator",
+      "actionKind": "industrial",
+      "glyph": "gear"
+    },
+    {
+      "id": "oven",
+      "name": "Oven",
+      "actionKind": "cook",
+      "glyph": "oven"
+    }
+  ]
 }

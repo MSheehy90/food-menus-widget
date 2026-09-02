@@ -1,5 +1,5 @@
 /* Offline-first service worker for Food Menus PWA */
-const CACHE = 'food-menus-v5';
+const CACHE = 'food-menus-v8';
 const PRECACHE = [
   './',
   './index.html',
@@ -7,6 +7,7 @@ const PRECACHE = [
   './css/app.css',
   './js/app.js',
   './js/stars.js',
+  './js/five-star.js',
   './js/config.js',
   './js/sync.js',
   './js/process.js',
@@ -27,7 +28,8 @@ const PRECACHE = [
   './data/process-catalog.json',
   './data/dish-star-scoring.csv',
   './data/restaurant-menus-v1.json',
-  './data/food-master-v2.json'
+  './data/food-master-v2.json',
+  './data/five-star-art.json'
 ];
 
 self.addEventListener('install', (event) => {

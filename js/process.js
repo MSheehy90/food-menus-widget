@@ -12,10 +12,43 @@
   function loadCatalog(raw) {
     const catalog = raw?.catalog || {};
     const byOutput = raw?.byOutput || {};
-    return { catalog, byOutput, raw };
+    const stations = Array.isArray(raw?.stations) && raw.stations.length
+      ? raw.stations
+      : [
+          { id: 'mill', name: 'Mill', actionKind: 'industrial', glyph: 'gear' },
+          { id: 'dehydrator', name: 'Dehydrator', actionKind: 'industrial', glyph: 'gear' },
+          { id: 'oven', name: 'Oven', actionKind: 'cook', glyph: 'oven' }
+        ];
+    return { catalog, byOutput, stations, raw };
   }
 
-  /** Primary output name for a process (skip byproducts/loss). */
+  function stationMeta(stations, name) {
+    if (!name) return null;
+    const n = String(name).toLowerCase();
+    return (stations || []).find((s) => s.name.toLowerCase() === n || s.id === n) || {
+      id: slugId(name),
+      name,
+      actionKind: /oven|cook|bake|fry/i.test(name) ? 'cook' : 'industrial',
+      glyph: /oven|cook|bake|fry/i.test(name) ? 'oven' : 'gear'
+    };
+  }
+
+  /** Virtual station object — not a locker food ingredient. */
+  function stationAsItem(stations, name) {
+    const meta = stationMeta(stations, name);
+    if (!meta) return null;
+    return {
+      id: `station:${meta.id}`,
+      name: meta.name,
+      art: '',
+      isStation: true,
+      glyph: meta.glyph || 'gear',
+      actionKind: meta.actionKind,
+      uiType: 'Station',
+      uiFamily: meta.actionKind === 'cook' ? 'Oven' : 'Industrial'
+    };
+  }
+
   function primaryOutputs(proc) {
     const groups = proc.outputGroup || {};
     const outs = Object.keys(proc.outputs || {});
@@ -27,21 +60,36 @@
     return Object.keys(proc.batchInput || {});
   }
 
-  function isStationName(name) {
-    return /dehydrator|oven|mill|press|smoker|station/i.test(String(name || ''));
+  function isStationName(name, stations) {
+    if (!name) return false;
+    if ((stations || []).some((s) => s.name.toLowerCase() === String(name).toLowerCase())) return true;
+    return /dehydrator|oven|mill|press|smoker|^station$/i.test(String(name));
   }
 
-  /** Build required slots for a process (ingredients + stations). */
-  function requiredSlots(proc) {
-    return inputNames(proc).map((name) => ({
-      name,
-      qty: proc.batchInput[name],
-      station: Boolean(proc.station && name === proc.station) || isStationName(name),
-      filledId: null
-    }));
+  /** Ingredient slots from batchInput + station slot from proc.station (not food). */
+  function requiredSlots(proc, stations) {
+    const slots = inputNames(proc)
+      .filter((name) => !isStationName(name, stations))
+      .map((name) => ({
+        name,
+        qty: proc.batchInput[name],
+        station: false,
+        filledId: null
+      }));
+    if (proc.station) {
+      const st = stationAsItem(stations, proc.station);
+      slots.push({
+        name: proc.station,
+        qty: 1,
+        station: true,
+        filledId: st?.id || `station:${slugId(proc.station)}`,
+        stationItem: st
+      });
+    }
+    return slots;
   }
 
-  /** Walk upstream processes to paint a visual chain ending at outputName. */
+  /** Walk upstream ingredient names (no stations). */
   function upstreamChain(outputName, byOutput, catalog, depth = 0, seen = new Set()) {
     if (!outputName || depth > 6 || seen.has(outputName)) return [outputName].filter(Boolean);
     seen.add(outputName);
@@ -51,10 +99,33 @@
     const proc = catalog[recipe.id];
     if (!proc) return [outputName];
     const inputs = inputNames(proc).filter((n) => !isStationName(n));
-    // Prefer grain/flour style single upstream for milling; else list key dry inputs
     const upstream = inputs[0];
     const head = upstreamChain(upstream, byOutput, catalog, depth + 1, seen);
     return [...head, outputName];
+  }
+
+  /**
+   * Visual chain nodes: for stationed processes, show inputs → station → output.
+   * Mix/form processes show the ingredient upstream chain only (no fake station).
+   */
+  function visualChain(outputName, proc, byOutput, catalog, stations) {
+    if (proc?.station) {
+      const inputs = inputNames(proc).filter((n) => !isStationName(n, stations));
+      const nodes = [];
+      if (inputs.length) {
+        inputs.forEach((name) => nodes.push({ kind: 'ingredient', name }));
+      } else {
+        const up = upstreamChain(outputName, byOutput, catalog);
+        if (up.length >= 2) nodes.push({ kind: 'ingredient', name: up[up.length - 2] });
+      }
+      nodes.push({ kind: 'station', station: stationAsItem(stations, proc.station) });
+      nodes.push({ kind: 'ingredient', name: outputName });
+      return nodes;
+    }
+    return upstreamChain(outputName, byOutput, catalog).map((name) => ({
+      kind: 'ingredient',
+      name
+    }));
   }
 
   function shelfCompare(proc, resolveIng) {
@@ -82,13 +153,10 @@
     };
   }
 
-  function findRecipesForOutput(outputName, byOutput) {
-    return byOutput[outputName] || [];
-  }
-
-  function listProcessOptions(catalog, byOutput) {
+  function listProcessOptions(catalog, byOutput, { stationName = null } = {}) {
     const opts = [];
     Object.entries(catalog).forEach(([id, proc]) => {
+      if (stationName && proc.station !== stationName) return;
       primaryOutputs(proc).forEach((out) => {
         opts.push({
           id,
@@ -96,6 +164,7 @@
           name: proc.name,
           days: proc.days,
           station: proc.station || null,
+          actionKind: proc.actionKind || 'mix',
           hasShelf: Boolean(proc.shelfLife)
         });
       });
@@ -104,7 +173,6 @@
     return opts;
   }
 
-  /** Draft ingredient record produced by running a process. */
   function draftOutputIngredient(proc, outputName, filledInputs, resolveIng) {
     const id = slugId(outputName);
     const starRoles = (proc.starRolesOut && proc.starRolesOut[outputName]) || [];
@@ -140,7 +208,6 @@
       flavorKey: base?.flavorKey || null,
       starRoles: starRoles.length ? starRoles : (base?.starRoles || []),
       shelfDays: shelf ?? base?.shelfDays ?? null,
-      process: Object.keys(proc).length ? undefined : undefined,
       unlocked: true,
       updatedAt: new Date().toISOString()
     };
@@ -148,12 +215,14 @@
 
   window.FoodMenusProcess = {
     loadCatalog,
+    stationMeta,
+    stationAsItem,
     primaryOutputs,
     inputNames,
     requiredSlots,
     upstreamChain,
+    visualChain,
     shelfCompare,
-    findRecipesForOutput,
     listProcessOptions,
     draftOutputIngredient,
     slugId,

@@ -20,7 +20,7 @@
     scoring: ['id', 'section', 'item', 'value', 'notes', 'updatedAt'],
     assets: ['id', 'item', 'art_url', 'updatedAt'],
     processes: [
-      'id', 'name', 'output', 'input_ids', 'input_names', 'station',
+      'id', 'name', 'output', 'input_ids', 'input_names', 'station', 'action_kind',
       'process_days', 'shelf_before', 'shelf_after', 'star_roles', 'updatedAt'
     ]
   };

@@ -24,6 +24,7 @@
           <p class="brand-name">Food Menus</p>
         </div>
         <div class="top-actions">
+          <button type="button" class="chip-btn" id="btn-dishes" title="Browse dishes">Dishes</button>
           <button type="button" class="icon-btn" id="btn-gallery" title="Art gallery" aria-label="Art gallery">▦</button>
           <button type="button" class="icon-btn" id="btn-kept" title="Kept plates" aria-label="Kept plates">
             ♥<span id="kept-count">0</span>
@@ -72,6 +73,12 @@
             placeholder="Output ingredient name" autocomplete="off" list="process-output-list" />
           <datalist id="process-output-list"></datalist>
         </label>
+        <div class="station-rail" id="station-rail" aria-label="Stations"></div>
+        <label class="locker-search-wrap process-search-wrap" for="process-search">
+          <span class="sr-only">Search processes</span>
+          <input type="search" id="process-search" class="locker-search" placeholder="Search processes…"
+            autocomplete="off" enterkeyhint="search" />
+        </label>
         <div class="process-picker" id="process-picker" aria-label="Process recipes"></div>
         <div class="process-chain-view" id="process-chain-view" aria-label="Process chain"></div>
         <ul class="process-slots" id="process-slots" aria-label="Required inputs"></ul>
@@ -84,10 +91,31 @@
       </section>
 
       <section class="locker">
+        <label class="locker-search-wrap" for="locker-search">
+          <span class="sr-only">Search ingredients</span>
+          <input type="search" id="locker-search" class="locker-search" placeholder="Search ingredients…"
+            autocomplete="off" enterkeyhint="search" />
+        </label>
+        <div class="stage-rail" id="stage-rail" aria-label="Stage filter">
+          <button type="button" class="stage-chip active" data-stage="all">All</button>
+          <button type="button" class="stage-chip" data-stage="raw">Raw</button>
+          <button type="button" class="stage-chip" data-stage="made">Made</button>
+        </div>
         <div class="type-rail" id="type-rail" aria-label="Ingredient types"></div>
         <div class="family-tabs" id="family-tabs" role="tablist"></div>
         <div id="ingredient-grid" class="ing-grid" aria-live="polite"></div>
       </section>
+    </main>
+
+    <!-- DISHES browse: kept + shop starters -->
+    <main id="view-dishes" class="view hidden">
+      <button type="button" class="back-btn" id="btn-back-from-dishes">← Locker</button>
+      <label class="locker-search-wrap" for="dishes-search" style="padding:0 0.85rem">
+        <span class="sr-only">Search dishes</span>
+        <input type="search" id="dishes-search" class="locker-search" placeholder="Search dishes…"
+          autocomplete="off" enterkeyhint="search" />
+      </label>
+      <div id="dishes-browse" class="dishes-browse"></div>
     </main>
 
     <!-- DISH: finished plate + visual variations -->
@@ -157,6 +185,7 @@
 
   <script src="js/config.js"></script>
   <script src="js/stars.js"></script>
+  <script src="js/five-star.js"></script>
   <script src="js/process.js"></script>
   <script src="js/sync.js"></script>
   <script src="js/drive-save.js"></script>

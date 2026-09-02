@@ -453,5 +453,22 @@
       "file": "assets/ingredients/5star/coffee-beans.png",
       "name": "coffee-beans"
     }
-  ]
+  ],
+  "visualThreshold": 4.5,
+  "byRestaurant": {
+    "ramen": "assets/dishes/5star/tiles/hq-01.png",
+    "pho": "assets/dishes/5star/tiles/hq-02.png",
+    "taqueria": "assets/dishes/5star/tiles/hq-03.png",
+    "diner": "assets/dishes/5star/tiles/hq-04.png",
+    "finedining": "assets/dishes/5star/tiles/hq-05.png",
+    "kitchen": "assets/dishes/5star/tiles/hq-06.png",
+    "bakery": "assets/dishes/5star/tiles/hq-07.png",
+    "sushi": "assets/dishes/5star/tiles/hq-08.png"
+  },
+  "byStyle": {
+    "ramen": "assets/dishes/5star/tiles/hq-01.png",
+    "pho": "assets/dishes/5star/tiles/hq-02.png",
+    "pasta": "assets/dishes/5star/tiles/hq-09.png",
+    "general": "assets/dishes/5star/tiles/hq-10.png"
+  }
 }
