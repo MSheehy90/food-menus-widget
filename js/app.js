@@ -365,12 +365,17 @@
     const n = ings.length;
     const center = centerHtml
       || `<div class="plate-center plate-center-empty" aria-hidden="true"></div>`;
+    // Radius as % of the plate-well — left/top % are parent-relative (unlike translate %).
+    const radius = 42;
     const ring = ings.map((ing, idx) => {
-      const angle = n ? ((360 * idx) / n) - 90 : 0;
+      const angleDeg = n ? ((360 * idx) / n) - 90 : 0;
+      const rad = (angleDeg * Math.PI) / 180;
+      const x = 50 + radius * Math.cos(rad);
+      const y = 50 + radius * Math.sin(rad);
       const size = ingredientSizeClass(ing);
       const hi = highlightId && ing.id === highlightId ? 'highlight' : '';
       return `
-        <div class="ring-item art-${size} ${hi}" style="--ring-i:${idx};--ring-n:${n};--ring-angle:${angle}deg;z-index:${idx + 2}">
+        <div class="ring-item art-${size} ${hi}" style="left:${x.toFixed(2)}%;top:${y.toFixed(2)}%;z-index:${idx + 2}">
           ${artHtml(ing)}
         </div>`;
     }).join('');
@@ -2091,10 +2096,10 @@
     } catch {
       state.menus = { restaurants: [] };
     }
-    // HQ 5-star art map — missing file degrades to stacked icons only
+    // HQ 5-star art map — missing file degrades to ring icons only
     try {
       const artRes = await fetch('data/five-star-art.json');
-      if (artRes.ok) {
+      if (artRes.ok && FiveStar()?.loadArtMap) {
         state.fiveStarArt = FiveStar().loadArtMap(await artRes.json());
       } else {
         state.fiveStarArt = null;

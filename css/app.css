@@ -128,7 +128,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 .plate-center {
   position: absolute;
   left: 50%; top: 50%;
-  width: 46%; height: 46%;
+  width: 42%; height: 42%;
   transform: translate(-50%, -50%);
   z-index: 1;
   display: grid;
@@ -137,7 +137,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   border-radius: 50%;
 }
 .plate-center-empty {
-  width: 38%; height: 38%;
+  width: 34%; height: 34%;
   border-radius: 50%;
   border: 1.5px solid rgba(232,220,198,0.1);
   background: radial-gradient(circle at 50% 40%, rgba(74,58,46,0.35), rgba(26,20,16,0.15) 70%);
@@ -155,39 +155,36 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 }
 .plate-bowl.has-center-dish .plate-center,
 .mini-plate.has-center-dish .plate-center {
-  width: 50%; height: 50%;
+  width: 44%; height: 44%;
 }
 
 /* ingredient thumbnails evenly spaced on the perimeter ring */
 .ring-item {
-  --ring-angle: 0deg;
-  --ring-radius: 38%;
   position: absolute;
-  left: 50%; top: 50%;
   width: 26%; height: 26%;
   margin: 0;
-  transform: translate(-50%, -50%) rotate(var(--ring-angle)) translateY(calc(-1 * var(--ring-radius))) rotate(calc(-1 * var(--ring-angle)));
+  transform: translate(-50%, -50%);
   display: grid; place-items: center;
-  animation: ring-in 320ms cubic-bezier(.2,.9,.2,1);
+  animation: ring-in 320ms ease-out;
   pointer-events: none;
 }
 .ring-item.art-bowl {
   width: 30%; height: 30%;
-  --ring-radius: 36%;
 }
 .ring-item.art-default {
   width: 26%; height: 26%;
 }
 .ring-item.art-condiment {
   width: 18%; height: 18%;
-  --ring-radius: 40%;
 }
 .ring-item img {
-  width: 100%; height: 100%;
+  width: 92%; height: 92%;
   object-fit: contain;
   filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
   pointer-events: none;
 }
+.ring-item.art-bowl img { width: 96%; height: 96%; }
+.ring-item.art-condiment img { width: 88%; height: 88%; }
 .ring-item .name-fallback {
   font-size: 0.55rem; font-weight: 800; text-align: center;
   background: rgba(26,20,16,0.75); padding: 0.2rem; border-radius: 8px;
@@ -624,7 +621,6 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 }
 .dish-browse-card .mini-plate .ring-item {
   width: 28%; height: 28%;
-  --ring-radius: 36%;
 }
 .dish-browse-card .mini-plate .ring-item.art-bowl {
   width: 32%; height: 32%;
@@ -695,7 +691,6 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 }
 .var-card .mini-plate .ring-item {
   width: 28%; height: 28%;
-  --ring-radius: 37%;
 }
 .var-card .mini-plate .ring-item.art-bowl { width: 32%; height: 32%; }
 .var-card .mini-plate .ring-item.art-condiment { width: 18%; height: 18%; }
