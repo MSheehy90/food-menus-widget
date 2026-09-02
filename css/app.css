@@ -646,7 +646,101 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 .gallery-tabs {
   display: flex; gap: 0.4rem; padding: 0.5rem 0.85rem;
 }
+.gallery-search-wrap {
+  display: block;
+  margin: 0 0.85rem 0.45rem;
+}
 .gallery-grid { padding: 0 0.75rem calc(1rem + var(--safe-bottom)); }
+.gallery-grid.gallery-miss {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  grid-template-columns: none;
+}
+.gal-tile {
+  position: relative;
+  aspect-ratio: auto;
+  min-height: 0;
+  border-radius: 14px;
+  background: radial-gradient(circle at 50% 40%, #3d3229, #241c17 75%);
+  border: 1px solid rgba(232,220,198,0.12);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0.28rem 0.22rem 0.3rem;
+  touch-action: manipulation;
+  text-align: center;
+  color: var(--ink);
+}
+.gal-tile .gal-thumb {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 0;
+}
+.gal-tile .gal-thumb img {
+  width: 78%; height: 78%; object-fit: contain;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.45));
+  pointer-events: none;
+}
+.gal-tile .gal-title {
+  margin-top: 0.15rem;
+  font-size: 0.55rem;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--ink);
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  max-height: 2.4em;
+  overflow: hidden;
+}
+.gal-tile.untitled {
+  border-color: rgba(240, 194, 122, 0.55);
+  background: radial-gradient(circle at 50% 40%, #43362c, #1c1612 78%);
+}
+.gal-tile.untitled .gal-title {
+  color: #f0c27a;
+}
+.gal-tile .gal-untitled-tag {
+  display: block;
+  font-size: 0.48rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #f0c27a;
+  opacity: 0.95;
+  margin-bottom: 0.05rem;
+}
+.gal-miss-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(7.5rem, 1.1fr);
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.55rem 0.65rem;
+  border-radius: 14px;
+  border: 1px dashed rgba(232,220,198,0.35);
+  background: #1c1612;
+}
+.gal-miss-name {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--ink);
+  line-height: 1.2;
+  word-break: break-word;
+}
+.gal-miss-select {
+  width: 100%;
+  min-height: 2.35rem;
+  padding: 0.35rem 0.45rem;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(26,20,16,0.95);
+  color: var(--ink);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.78rem;
+}
 
 /* —— dialogs —— */
 dialog {
