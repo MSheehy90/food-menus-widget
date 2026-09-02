@@ -4067,7 +4067,7 @@
       "kcal": 2,
       "upstream": "",
       "harvest": "pick ripe coffee cherries; process seeds/beans",
-      "artStatus": "missing",
+      "artStatus": "image",
       "afterHarvest": "",
       "servingQty": 1,
       "servingUnit": "cup",
@@ -4077,7 +4077,7 @@
       "chain": [
         "Coffee"
       ],
-      "art": "",
+      "art": "assets/ingredients/5star/coffee-beans.png",
       "unlocked": true,
       "exclusive": null,
       "process": null,
@@ -5339,7 +5339,7 @@
       "kcal": 26,
       "upstream": "",
       "harvest": "harvest mature fruit",
-      "artStatus": "missing",
+      "artStatus": "image",
       "afterHarvest": "",
       "servingQty": 3.53,
       "servingUnit": "oz",
@@ -5349,7 +5349,7 @@
       "chain": [
         "Pumpkin"
       ],
-      "art": "",
+      "art": "assets/ingredients/5star/pumpkin.png",
       "unlocked": true,
       "exclusive": null,
       "process": null,

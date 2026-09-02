@@ -128,6 +128,9 @@ const EXACT={
   'Avocado':supply('avocado.png'),
   'Oranges':supply('oranges.png'),
   'Pears':supply('pears.png'),
+  // 5-star produce paintings used as locker icons until dedicated supply crops exist
+  'Pumpkin':I+'5star/pumpkin.png',
+  'Coffee':I+'5star/coffee-beans.png',
   'Miso':supply('miso.png'),
   'Soy Sauce':supply('soy-sauce.png'),
   'Menma':supply('menma.png'),

@@ -6,8 +6,8 @@
   "rowHash": "24aeb52c2e9f9b39",
   "artCounts": {
     "rule": 89,
-    "missing": 66,
-    "image": 27,
+    "missing": 64,
+    "image": 29,
     "emoji": 2
   },
   "rows": [
@@ -8270,7 +8270,7 @@
         "seasonalNote": "Use the cooler end of Tropical Wet; coffee should not share the hottest banana car.",
         "note": ""
       },
-      "artStatus": "missing",
+      "artStatus": "image",
       "afterHarvest": ""
     },
     {
@@ -11626,7 +11626,7 @@
         "seasonalNote": "",
         "note": "Game crop catalog uses a conservative contained/trellised vine-bed planning model."
       },
-      "artStatus": "missing",
+      "artStatus": "image",
       "afterHarvest": ""
     },
     {
