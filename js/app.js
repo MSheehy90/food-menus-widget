@@ -173,9 +173,116 @@
       return `<span class="station-glyph ${glyph}" aria-hidden="true"></span>`;
     }
     if (ing?.art) {
-      return `<img class="${cls}" src="${esc(ing.art)}" alt="" draggable="false" loading="lazy" decoding="async" />`;
+      const sizeCls = `art-fit art-${artSizeClass(ing.art)}`;
+      return `<img class="${esc((cls ? `${cls} ` : '') + sizeCls)}" src="${esc(ing.art)}" alt="" draggable="false" loading="lazy" decoding="async" data-art="${esc(ing.art)}" />`;
     }
     return `<span class="name-fallback">${esc(ing?.name || '?')}</span>`;
+  }
+
+  /* —— art visual size: bowls larger, condiments smaller, bbox-normalized —— */
+  const ART_FILL = { bowl: 0.93, default: 0.78, condiment: 0.62 };
+  const artBBoxCache = new Map(); // path → opaque fill ratio (0–1)
+
+  function artSizeClass(path) {
+    const p = normalizeArtPath(path).toLowerCase();
+    const stem = artStem(p).toLowerCase();
+    const hq = stem.match(/^hq-(\d+)$/);
+    if (hq) {
+      const n = Number(hq[1]);
+      if (n >= 1 && n <= 24) return 'bowl';
+      if (n >= 65 && n <= 73) return 'condiment';
+    }
+    if (/\b(bowl|ramen|pho|pie|loaf|mound|stew|soup|platter|plate)\b/.test(stem.replace(/_/g, ' ')) ||
+        /(bowl|ramen|pho|pie|loaf|mound|stew|soup)/.test(stem)) {
+      return 'bowl';
+    }
+    if (/(lime|lemon|sauce|wedge|herb|scallion|cilantro|chili|flake|garnish|sesame_seed)/.test(stem) ||
+        /(lime|lemon|sauce|wedge|herb|scallion|cilantro)/.test(p)) {
+      return 'condiment';
+    }
+    return 'default';
+  }
+
+  function measureOpaqueRatio(img) {
+    const key = normalizeArtPath(img.getAttribute('data-art') || img.currentSrc || img.src);
+    if (artBBoxCache.has(key)) return Promise.resolve(artBBoxCache.get(key));
+    return new Promise((resolve) => {
+      const run = () => {
+        try {
+          const w = img.naturalWidth;
+          const h = img.naturalHeight;
+          if (!w || !h) {
+            artBBoxCache.set(key, 1);
+            resolve(1);
+            return;
+          }
+          const maxSide = 128;
+          const scale = Math.min(1, maxSide / Math.max(w, h));
+          const cw = Math.max(1, Math.round(w * scale));
+          const ch = Math.max(1, Math.round(h * scale));
+          const canvas = document.createElement('canvas');
+          canvas.width = cw;
+          canvas.height = ch;
+          const ctx = canvas.getContext('2d', { willReadFrequently: true });
+          ctx.drawImage(img, 0, 0, cw, ch);
+          const data = ctx.getImageData(0, 0, cw, ch).data;
+          let minX = cw;
+          let minY = ch;
+          let maxX = -1;
+          let maxY = -1;
+          for (let y = 0; y < ch; y++) {
+            for (let x = 0; x < cw; x++) {
+              if (data[(y * cw + x) * 4 + 3] > 12) {
+                if (x < minX) minX = x;
+                if (y < minY) minY = y;
+                if (x > maxX) maxX = x;
+                if (y > maxY) maxY = y;
+              }
+            }
+          }
+          let ratio = 1;
+          if (maxX >= minX && maxY >= minY) {
+            const bw = (maxX - minX + 1) / cw;
+            const bh = (maxY - minY + 1) / ch;
+            ratio = Math.max(bw, bh);
+          }
+          ratio = Math.min(1, Math.max(0.12, ratio));
+          artBBoxCache.set(key, ratio);
+          resolve(ratio);
+        } catch {
+          artBBoxCache.set(key, 1);
+          resolve(1);
+        }
+      };
+      if (img.complete && img.naturalWidth) run();
+      else img.addEventListener('load', run, { once: true });
+    });
+  }
+
+  function fitArtImage(img) {
+    if (!img) return;
+    const path = img.getAttribute('data-art') || img.getAttribute('src') || '';
+    const cls = artSizeClass(path);
+    img.classList.add('art-fit');
+    img.classList.remove('art-bowl', 'art-condiment', 'art-default');
+    img.classList.add(`art-${cls}`);
+    if (!img.getAttribute('data-art') && path) img.setAttribute('data-art', path);
+    const target = ART_FILL[cls] || ART_FILL.default;
+    // CSS class sets a sensible base; refine with opaque bbox so padded PNGs enlarge.
+    measureOpaqueRatio(img).then((ratio) => {
+      const pct = Math.min(1.12, Math.max(0.42, target / Math.max(ratio, 0.18)));
+      img.style.width = `${Math.round(pct * 1000) / 10}%`;
+      img.style.height = `${Math.round(pct * 1000) / 10}%`;
+      img.dataset.artFitBound = '1';
+      img.dataset.sizeClass = cls;
+    });
+  }
+
+  function enhanceArtImages(root = document) {
+    const nodes = root === document
+      ? root.querySelectorAll('.ing-tile img[src], .gal-thumb img[src], .ring-item img[src]')
+      : root.querySelectorAll('img[src]');
+    nodes.forEach(fitArtImage);
   }
 
   function stationGlyphHtml(station) {
@@ -228,20 +335,66 @@
     return S.detectStyle(state.selected.map((i) => i.name));
   }
 
-  /* —— plate stack —— */
-  function renderPlateStack(el, ingredients, { highlightId = null } = {}) {
+  /* —— plate ring (ingredients on perimeter; optional cooked center) —— */
+  function ingredientSizeClass(ing) {
+    if (ing?.art) return artSizeClass(ing.art);
+    const name = String(ing?.name || '');
+    const type = String(ing?.uiType || ing?.group || '');
+    if (/spice|herb/i.test(type) || /lime|lemon|cilantro|scallion|herb|sauce|chili|garnish/i.test(name)) {
+      return 'condiment';
+    }
+    if (/broth|carb/i.test(type) || /bowl|ramen|pho|soup|stew|pie|loaf|noodle/i.test(name)) {
+      return 'bowl';
+    }
+    return artSizeClass(name);
+  }
+
+  function namedDishArtsFromCatalog() {
+    const out = [];
+    (state.catalog?.ingredients || []).forEach((ing) => {
+      const art = normalizeArtPath(ing.art);
+      if (!art || !/\/dishes\//.test(art)) return;
+      out.push({ id: ing.id, name: ing.name, file: art });
+    });
+    return out;
+  }
+
+  function renderPlateStack(el, ingredients, { highlightId = null, centerHtml = '' } = {}) {
     if (!el) return;
-    el.innerHTML = (ingredients || []).map((ing, idx) => `
-      <div class="stack-layer ${highlightId && ing.id === highlightId ? 'highlight' : ''}" style="z-index:${idx + 1}">
-        ${artHtml(ing)}
-      </div>
-    `).join('');
+    const ings = ingredients || [];
+    const n = ings.length;
+    const center = centerHtml
+      || `<div class="plate-center plate-center-empty" aria-hidden="true"></div>`;
+    const ring = ings.map((ing, idx) => {
+      const angle = n ? ((360 * idx) / n) - 90 : 0;
+      const size = ingredientSizeClass(ing);
+      const hi = highlightId && ing.id === highlightId ? 'highlight' : '';
+      return `
+        <div class="ring-item art-${size} ${hi}" style="--ring-i:${idx};--ring-n:${n};--ring-angle:${angle}deg;z-index:${idx + 2}">
+          ${artHtml(ing)}
+        </div>`;
+    }).join('');
+    el.innerHTML = `${center}${ring}`;
+    el.classList.toggle('has-ring', n > 0);
+    enhanceArtImages(el);
+  }
+
+  function setPlateCenter(stack, file, alt) {
+    if (!stack) return;
+    let center = stack.querySelector('.plate-center');
+    if (!center) {
+      center = document.createElement('div');
+      center.className = 'plate-center';
+      stack.prepend(center);
+    }
+    center.classList.remove('plate-center-empty');
+    center.innerHTML = `<img class="plate-center-img hq-dish-img" src="${esc(file)}" alt="${esc(alt || 'plated dish')}" draggable="false" />`;
   }
 
   function clearHqChrome(bowl) {
     if (!bowl) return;
-    bowl.classList.remove('hq-plate', 'hq-has-photo');
-    bowl.querySelectorAll('.hq-cue, .hq-dish-img').forEach((n) => n.remove());
+    bowl.classList.remove('hq-plate', 'hq-has-photo', 'has-center-dish');
+    bowl.querySelectorAll('.hq-cue').forEach((n) => n.remove());
   }
 
   function hqContext(ingredients, extra = {}) {
@@ -261,40 +414,58 @@
   }
 
   /**
-   * 5-star quality: swap stacked locker icons for HQ plated photo.
-   * Visual gate is artMap.visualThreshold (4.5); numeric stars stay honest.
+   * Perimeter ingredient ring + optional cooked-dish center (existing assets only).
+   * Never invents art; empty center if no mapped hero/hq/dish PNG loads.
    */
   function renderHqOrStack(bowl, stack, ingredients, extra = {}) {
     if (!bowl || !stack) return;
     clearHqChrome(bowl);
     const gen = ++state.hqPlateGen;
+    const ings = ingredients || [];
+    renderPlateStack(stack, ings, extra);
+    if (!ings.length) return;
+
     const FS = FiveStar();
     const artMap = state.fiveStarArt;
-    if (!FS || !artMap || !(ingredients || []).length) {
-      renderPlateStack(stack, ingredients, extra);
-      return;
-    }
-    const ctx = hqContext(ingredients, extra);
-    const resolved = FS.resolveCandidates(ctx, artMap);
-    if (!resolved.quality) {
-      renderPlateStack(stack, ingredients, extra);
-      return;
-    }
+    if (!FS || !artMap) return;
 
-    bowl.classList.add('hq-plate');
-    const cue = document.createElement('span');
-    cue.className = 'hq-cue';
-    cue.textContent = resolved.cue || '5-star quality';
-    bowl.appendChild(cue);
+    const ctx = hqContext(ings, extra);
+    const resolved = FS.resolveCandidates(ctx, artMap, {
+      namedDishArts: namedDishArtsFromCatalog()
+    });
 
-    // Optimistic stack until a photo loads (or none do).
-    renderPlateStack(stack, ingredients, extra);
+    if (resolved.quality) {
+      bowl.classList.add('hq-plate');
+      const cue = document.createElement('span');
+      cue.className = 'hq-cue';
+      cue.textContent = resolved.cue || '5-star quality';
+      bowl.appendChild(cue);
+    }
 
     FS.pickLoadable(resolved.candidates).then((cand) => {
       if (gen !== state.hqPlateGen) return;
-      if (!cand?.file) return; // keep stacked icons inside larger plate + cue
-      bowl.classList.add('hq-has-photo');
-      stack.innerHTML = `<img class="hq-dish-img" src="${esc(cand.file)}" alt="${esc(ctx.dishName || '5-star dish')}" draggable="false" />`;
+      if (!cand?.file) return; // keep quiet empty center + ring
+      bowl.classList.add('has-center-dish');
+      if (resolved.quality) bowl.classList.add('hq-has-photo');
+      setPlateCenter(stack, cand.file, ctx.dishName || 'plated dish');
+    });
+  }
+
+  function renderMiniPlate(el, ingredients, extra = {}) {
+    if (!el) return;
+    const ings = ingredients || [];
+    renderPlateStack(el, ings, extra);
+    const FS = FiveStar();
+    const artMap = state.fiveStarArt;
+    if (!FS || !artMap || !ings.length) return;
+    const ctx = hqContext(ings, extra);
+    const resolved = FS.resolveCandidates(ctx, artMap, {
+      namedDishArts: namedDishArtsFromCatalog()
+    });
+    FS.pickLoadable(resolved.candidates).then((cand) => {
+      if (!cand?.file || !el.isConnected) return;
+      setPlateCenter(el, cand.file, ctx.dishName || '');
+      el.classList.add('has-center-dish');
     });
   }
 
@@ -530,6 +701,7 @@
       const ing = state.byId.get(btn.dataset.id);
       bindTileGestures(btn, ing);
     });
+    enhanceArtImages($('#ingredient-grid'));
   }
 
   function addToPlate(ing) {
@@ -727,8 +899,13 @@
         `;
       }).join('');
       d.variations.forEach((v, idx) => {
-        renderPlateStack($(`.mini-plate[data-var-stack="${idx}"]`), v.ingredients, {
-          highlightId: v.highlightId || null
+        renderMiniPlate($(`.mini-plate[data-var-stack="${idx}"]`), v.ingredients, {
+          highlightId: v.highlightId || null,
+          dishName: d.name,
+          restaurantId: d.restaurantId,
+          restaurantName: d.restaurant,
+          style: d.style,
+          score: v.score
         });
       });
       varList.querySelectorAll('[data-remove-var]').forEach((btn) => {
@@ -878,7 +1055,13 @@
     `).join('');
     state.kept.forEach((d, idx) => {
       const ings = (d.ingredients || []).map((row) => state.byId.get(row.id) || row);
-      renderPlateStack($(`.mini-plate[data-kept-stack="${idx}"]`), ings);
+      renderMiniPlate($(`.mini-plate[data-kept-stack="${idx}"]`), ings, {
+        dishName: d.name,
+        restaurantId: d.restaurantId,
+        restaurantName: d.restaurant,
+        style: d.style,
+        score: d.score
+      });
     });
     list.querySelectorAll('[data-drop]').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -926,12 +1109,16 @@
             ings.push(ing);
           }
         });
+        const legal = S.detectStyle(ings.map((i) => i.name));
+        const score = ings.length ? S.scoreDish(ings, state.catalog) : null;
         out.push({
           id: `starter:${rest.id}:${fam.id}`,
           name: fam.label,
           restaurantId: rest.id,
           restaurant: rest.name,
           source: 'shop',
+          style: legal?.style || 'general',
+          score,
           ingredients: ings
         });
       });
@@ -1002,10 +1189,22 @@
     `;
 
     kept.forEach((d, i) => {
-      renderPlateStack($(`.mini-plate[data-dish-stack="kept-${i}"]`), hydrateIngredients(d.ingredients));
+      renderMiniPlate($(`.mini-plate[data-dish-stack="kept-${i}"]`), hydrateIngredients(d.ingredients), {
+        dishName: d.name,
+        restaurantId: d.restaurantId,
+        restaurantName: d.restaurant,
+        style: d.style,
+        score: d.score
+      });
     });
     starters.forEach((d, i) => {
-      renderPlateStack($(`.mini-plate[data-dish-stack="shop-${i}"]`), d.ingredients);
+      renderMiniPlate($(`.mini-plate[data-dish-stack="shop-${i}"]`), d.ingredients, {
+        dishName: d.name,
+        restaurantId: d.restaurantId,
+        restaurantName: d.restaurant,
+        style: d.style,
+        score: d.score
+      });
     });
 
     el.querySelectorAll('.dish-browse-card').forEach((btn) => {
@@ -1086,6 +1285,57 @@
     return out;
   }
 
+  /** Unused paintings waiting on names: HQ tiles, leftover 5★ produce, rice stalk, extras. */
+  function isUntitledPoolPath(path) {
+    const p = normalizeArtPath(path);
+    if (!p) return false;
+    if (p.includes('/ingredients/extra/') || p.includes('/dishes/extra/')) return true;
+    if (p.includes('rice_stalk_bundle')) return true;
+    if (/\/ingredients\/5star\//.test(p)) return true;
+    const hq = p.match(/\/hq-(\d+)\.png$/i);
+    if (hq) {
+      const n = Number(hq[1]);
+      return n >= 1 && n <= 73;
+    }
+    return false;
+  }
+
+  function untitledArtFiles() {
+    return unusedArtFiles()
+      .filter(isUntitledPoolPath)
+      .sort((a, b) => artStem(a).localeCompare(artStem(b)));
+  }
+
+  function slugIngredientId(name) {
+    const base = String(name || '')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'ingredient';
+    let id = base;
+    let n = 2;
+    while (state.byId.has(id)) {
+      id = `${base}-${n++}`;
+    }
+    return id;
+  }
+
+  function catalogNameOptionsHtml() {
+    const ings = [...(state.catalog.ingredients || [])];
+    ings.sort((a, b) => {
+      const aEmpty = a.art ? 1 : 0;
+      const bEmpty = b.art ? 1 : 0;
+      if (aEmpty !== bEmpty) return aEmpty - bEmpty; // empty-art first
+      return String(a.name).localeCompare(String(b.name));
+    });
+    return [`<option value="">name this</option>`]
+      .concat(ings.map((ing) => {
+        const mark = ing.art ? '' : ' · empty';
+        return `<option value="${esc(ing.id)}">${esc(ing.name)}${mark}</option>`;
+      }))
+      .join('');
+  }
+
   async function ensureArtFiles() {
     if (state.artFiles.length) return state.artFiles;
     try {
@@ -1107,6 +1357,18 @@
     Sync().upsertLocal('assets', Sync().assetFromIngredient(ing, ts), { dirty: true });
   }
 
+  function ensureIngredientInHierarchy(ing) {
+    const hier = state.catalog.hierarchy || (state.catalog.hierarchy = {});
+    const type = ing.uiType || 'Other';
+    const family = ing.uiFamily || 'Extras';
+    if (!hier[type]) hier[type] = {};
+    if (!hier[type][family]) hier[type][family] = [];
+    if (!hier[type][family].includes(ing.id)) hier[type][family].push(ing.id);
+    if (Array.isArray(state.catalog.typeOrder) && !state.catalog.typeOrder.includes(type)) {
+      state.catalog.typeOrder.push(type);
+    }
+  }
+
   function assignArtToIngredient(ingId, artPath) {
     const ing = state.byId.get(ingId);
     const path = normalizeArtPath(artPath);
@@ -1124,6 +1386,50 @@
     renderGrid();
     renderTray();
     renderGallery();
+  }
+
+  /** Create a local catalog row only when Melinda types a new name for bakery extras. */
+  function createNamedIngredientForArt(name, artPath) {
+    const trimmed = String(name || '').trim();
+    const path = normalizeArtPath(artPath);
+    if (!trimmed || !path) return null;
+    const existing = state.byName.get(trimmed.toLowerCase());
+    if (existing) {
+      assignArtToIngredient(existing.id, path);
+      return existing;
+    }
+    const ing = {
+      id: slugIngredientId(trimmed),
+      name: trimmed,
+      group: 'Other',
+      category: 'Extras',
+      type: 'Extras',
+      stage: 'primary',
+      uiType: 'Other',
+      uiFamily: 'Extras',
+      art: path,
+      unlocked: true,
+      chain: [trimmed],
+      starRoles: [],
+      source: 'local-untitled'
+    };
+    // One file → one name
+    (state.catalog.ingredients || []).forEach((other) => {
+      if (normalizeArtPath(other.art) === path) {
+        other.art = '';
+        persistIngredientArt(other);
+      }
+    });
+    state.catalog.ingredients.push(ing);
+    ensureIngredientInHierarchy(ing);
+    persistIngredientArt(ing);
+    rebuildIndexes();
+    renderTypeRail();
+    renderFamilies();
+    renderGrid();
+    renderTray();
+    renderGallery();
+    return ing;
   }
 
   function paintedGalleryItems() {
@@ -1166,23 +1472,9 @@
       });
     });
 
-    unusedArtFiles().forEach((path) => {
-      const stem = artStem(path);
-      items.push({
-        kind: 'unused',
-        id: `unused:${path}`,
-        title: stem,
-        art: path,
-        uiType: inferUiTypeFromStem(stem),
-        untitled: true,
-        names: [stem]
-      });
-    });
-
     items.sort((a, b) => {
       const d = galleryTypeRank(a.uiType) - galleryTypeRank(b.uiType);
       if (d) return d;
-      if (a.untitled !== b.untitled) return a.untitled ? 1 : -1;
       return String(a.title).localeCompare(String(b.title));
     });
     return items;
@@ -1194,11 +1486,36 @@
     return String(text || '').toLowerCase().includes(q);
   }
 
+  function bindUntitledTile(tile) {
+    const path = tile.getAttribute('data-art');
+    const sel = tile.querySelector('select.gal-name-select');
+    const input = tile.querySelector('input.gal-new-name');
+    sel?.addEventListener('change', () => {
+      const ingId = sel.value;
+      if (!ingId) return;
+      assignArtToIngredient(ingId, path);
+    });
+    const commitNew = () => {
+      const name = (input?.value || '').trim();
+      if (!name) return;
+      createNamedIngredientForArt(name, path);
+    };
+    input?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        commitNew();
+      }
+    });
+    input?.addEventListener('change', commitNew);
+  }
+
   function renderGallery() {
-    $('#gal-have').classList.toggle('active', state.galleryMode === 'have');
-    $('#gal-miss').classList.toggle('active', state.galleryMode === 'miss');
+    $('#gal-have')?.classList.toggle('active', state.galleryMode === 'have');
+    $('#gal-untitled')?.classList.toggle('active', state.galleryMode === 'untitled');
+    $('#gal-miss')?.classList.toggle('active', state.galleryMode === 'miss');
     const grid = $('#gallery-grid');
     grid.classList.toggle('gallery-miss', state.galleryMode === 'miss');
+    grid.classList.toggle('gallery-untitled', state.galleryMode === 'untitled');
 
     if (state.galleryMode === 'have') {
       const items = paintedGalleryItems().filter((it) =>
@@ -1208,14 +1525,37 @@
         (it.names || []).some((n) => galleryQueryMatch(n))
       );
       grid.innerHTML = items.map((it) => `
-        <div class="gal-tile ${it.untitled ? 'untitled' : ''}" title="${esc(it.title)}">
+        <div class="gal-tile" title="${esc(it.title)}">
           <div class="gal-thumb">
-            <img src="${esc(it.art)}" alt="" loading="lazy" decoding="async" draggable="false" />
+            <img class="art-fit art-${artSizeClass(it.art)}" src="${esc(it.art)}" alt="" loading="lazy" decoding="async" draggable="false" data-art="${esc(it.art)}" />
           </div>
-          ${it.untitled ? `<span class="gal-untitled-tag">untitled</span>` : ''}
           <span class="gal-title">${esc(it.title)}</span>
         </div>
       `).join('') || `<p class="muted" style="grid-column:1/-1;text-align:center">None</p>`;
+      enhanceArtImages(grid);
+      return;
+    }
+
+    if (state.galleryMode === 'untitled') {
+      const files = untitledArtFiles().filter((path) =>
+        galleryQueryMatch(artStem(path)) || galleryQueryMatch(path)
+      );
+      const nameOptions = catalogNameOptionsHtml();
+      grid.innerHTML = files.map((path) => {
+        const stem = artStem(path);
+        return `
+        <div class="gal-tile untitled" data-art="${esc(path)}" title="${esc(stem)}">
+          <div class="gal-thumb">
+            <img class="art-fit art-${artSizeClass(path)}" src="${esc(path)}" alt="" loading="lazy" decoding="async" draggable="false" data-art="${esc(path)}" />
+          </div>
+          <span class="gal-untitled-tag">untitled</span>
+          <span class="gal-title">${esc(stem)}</span>
+          <select class="gal-name-select" aria-label="Name ${esc(stem)}">${nameOptions}</select>
+          <input type="text" class="gal-new-name" placeholder="new name…" aria-label="New name for ${esc(stem)}" autocomplete="off" />
+        </div>`;
+      }).join('') || `<p class="muted" style="grid-column:1/-1;text-align:center">None</p>`;
+      grid.querySelectorAll('.gal-tile.untitled').forEach(bindUntitledTile);
+      enhanceArtImages(grid);
       return;
     }
 
@@ -1697,6 +2037,10 @@
     });
     $('#gal-have').addEventListener('click', () => {
       state.galleryMode = 'have';
+      ensureArtFiles().then(() => renderGallery());
+    });
+    $('#gal-untitled')?.addEventListener('click', () => {
+      state.galleryMode = 'untitled';
       ensureArtFiles().then(() => renderGallery());
     });
     $('#gal-miss').addEventListener('click', () => {
