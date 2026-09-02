@@ -1028,6 +1028,13 @@
     return base.replace(/\.png$/i, '');
   }
 
+  function normalizeArtPath(path) {
+    return String(path || '')
+      .trim()
+      .replace(/\\/g, '/')
+      .replace(/^\.\//, '');
+  }
+
   function normalizeArtKey(s) {
     return String(s || '')
       .toLowerCase()
@@ -1060,7 +1067,8 @@
   function referencedArtPaths() {
     const used = new Set();
     (state.catalog.ingredients || []).forEach((ing) => {
-      if (ing.art) used.add(String(ing.art));
+      const art = normalizeArtPath(ing.art);
+      if (art) used.add(art);
     });
     return used;
   }
@@ -1070,7 +1078,7 @@
     const seen = new Set();
     const out = [];
     (state.artFiles || []).forEach((path) => {
-      const p = String(path || '').trim();
+      const p = normalizeArtPath(path);
       if (!p || used.has(p) || seen.has(p)) return;
       seen.add(p);
       out.push(p);
@@ -1101,15 +1109,16 @@
 
   function assignArtToIngredient(ingId, artPath) {
     const ing = state.byId.get(ingId);
-    if (!ing || !artPath) return;
+    const path = normalizeArtPath(artPath);
+    if (!ing || !path) return;
     // One file → one catalog name: clear any other ingredient still pointing here
     (state.catalog.ingredients || []).forEach((other) => {
-      if (other.id !== ingId && other.art === artPath) {
+      if (other.id !== ingId && normalizeArtPath(other.art) === path) {
         other.art = '';
         persistIngredientArt(other);
       }
     });
-    ing.art = artPath;
+    ing.art = path;
     persistIngredientArt(ing);
     rebuildIndexes();
     renderGrid();
@@ -1118,18 +1127,45 @@
   }
 
   function paintedGalleryItems() {
-    const items = [];
+    const byPath = new Map();
+    const seenNameArt = new Set();
+
     (state.catalog.ingredients || []).forEach((ing) => {
-      if (!ing.art) return;
+      const art = normalizeArtPath(ing.art);
+      if (!art) return;
+      const nameArtKey = `${String(ing.name || '').toLowerCase()}|${art}`;
+      if (seenNameArt.has(nameArtKey)) return; // drop duplicate name+art catalog rows
+      seenNameArt.add(nameArtKey);
+
+      let group = byPath.get(art);
+      if (!group) {
+        group = {
+          art,
+          names: [],
+          uiType: ing.uiType || ing.group || 'Other'
+        };
+        byPath.set(art, group);
+      }
+      group.names.push(ing.name);
+    });
+
+    const items = [];
+    byPath.forEach((group) => {
+      const names = group.names;
+      const title = names.length === 1
+        ? names[0]
+        : `${names[0]} x${names.length}`;
       items.push({
         kind: 'named',
-        id: ing.id,
-        title: ing.name,
-        art: ing.art,
-        uiType: ing.uiType || ing.group || 'Other',
-        untitled: false
+        id: `art:${group.art}`,
+        title,
+        art: group.art,
+        uiType: group.uiType,
+        untitled: false,
+        names
       });
     });
+
     unusedArtFiles().forEach((path) => {
       const stem = artStem(path);
       items.push({
@@ -1138,9 +1174,11 @@
         title: stem,
         art: path,
         uiType: inferUiTypeFromStem(stem),
-        untitled: true
+        untitled: true,
+        names: [stem]
       });
     });
+
     items.sort((a, b) => {
       const d = galleryTypeRank(a.uiType) - galleryTypeRank(b.uiType);
       if (d) return d;
@@ -1164,7 +1202,10 @@
 
     if (state.galleryMode === 'have') {
       const items = paintedGalleryItems().filter((it) =>
-        galleryQueryMatch(it.title) || galleryQueryMatch(artStem(it.art)) || galleryQueryMatch(it.uiType)
+        galleryQueryMatch(it.title) ||
+        galleryQueryMatch(artStem(it.art)) ||
+        galleryQueryMatch(it.uiType) ||
+        (it.names || []).some((n) => galleryQueryMatch(n))
       );
       grid.innerHTML = items.map((it) => `
         <div class="gal-tile ${it.untitled ? 'untitled' : ''}" title="${esc(it.title)}">
