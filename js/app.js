@@ -1219,7 +1219,7 @@
     return chips.length ? `<div class="detail-meta">${chips.join('')}</div>` : '';
   }
 
-  /** Catalog names that share this tile's art path (explains Painted "Name xN"). */
+  /** Catalog names that share this tile's art path (detail-only; Painted grid stays uncounted). */
   function sharedArtNames(ing) {
     const art = normalizeArtPath(ing?.art);
     const names = [];
@@ -2295,9 +2295,10 @@
     const items = [];
     byPath.forEach((group) => {
       const names = group.names;
-      const title = names.length === 1
-        ? names[0]
-        : `${names[0]} x${names.length}`;
+      const canonical = pickCanonicalLockerIngredient(group.ingredients, group.art);
+      const title = canonical?.name
+        || names[0]
+        || humanizeArtStem(artStem(group.art));
       items.push({
         kind: 'named',
         id: `art:${group.art}`,
