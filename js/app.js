@@ -1064,7 +1064,7 @@
         </div>
       ` : ''}
     `;
-    $('#detail-toggle').textContent = state.armedSlotId
+    $('#detail-toggle').textContent = state.armedSlotId && state.mode === 'dish'
       ? 'Add to slot'
       : (onPlate ? 'Remove' : 'Add to plate');
     $('#detail-dialog').showModal();
@@ -2209,6 +2209,8 @@
     $('#plate-stage')?.classList.toggle('hidden', mode !== 'dish');
     $('#ingredient-author')?.classList.toggle('hidden', mode !== 'ingredient');
     if (mode === 'ingredient') {
+      // Slot arming is dish-only; don't leave a stale arm that mislabels detail Add
+      state.armedSlotId = null;
       renderProcessAuthor();
     } else {
       renderTray();
