@@ -112,15 +112,7 @@
     const slots = normalizeRecipeSlots(state.recipeSlots);
     const hasSlotOpts = slots.some((s) => (s.optionIds || []).length);
     if (!hasSlotOpts) return null;
-    // Loaded kept recipe already had slots → recognize against its cores + current slot defs
-    if (state.loadedRecipe?.slots?.some((s) => (s.optionIds || []).length)) {
-      const cores = S.recipeCores(
-        hydrateIngredients(state.loadedRecipe.ingredients || []),
-        slots
-      );
-      return S.satisfiesRecipe(state.selected, { ingredients: cores, slots });
-    }
-    // Authoring new slots on a plate: cores are non-option plate items (always present);
+    // Cores are whatever is on the plate and not a slot option (always present);
     // Create dish is gated by covering each non-empty slot.
     return S.satisfiesRecipe(state.selected, {
       ingredients: corePlateIngredients(state.selected),
@@ -170,15 +162,13 @@
     renderTray();
   }
 
-  function addOptionToSlot(slotId, ing, { moveOffPlate = false } = {}) {
+  function addOptionToSlot(slotId, ing) {
     if (!ing) return;
     const slot = state.recipeSlots.find((s) => s.id === slotId);
     if (!slot) return;
     if (!slot.optionIds.includes(ing.id)) slot.optionIds.push(ing.id);
     seedSlotFromSubstitutes(slot, ing);
-    if (moveOffPlate) {
-      state.selected = state.selected.filter((x) => x.id !== ing.id);
-    }
+    // Leave plate picks in place — recipeCores already hides slot options from the required list.
     renderSlots();
     renderTray();
     renderGrid();
@@ -204,9 +194,8 @@
       e.stopPropagation();
       el.classList.remove('drag-over');
       const id = e.dataTransfer.getData('text/ing-id');
-      const fromRecipe = e.dataTransfer.getData('text/from-recipe') === '1';
       const ing = state.byId.get(id);
-      if (ing) addOptionToSlot(slotId, ing, { moveOffPlate: fromRecipe });
+      if (ing) addOptionToSlot(slotId, ing);
     });
   }
 
@@ -983,6 +972,15 @@
         .slice(0, 2)
         .join(' · ');
       $('#tray-hint').textContent = cue ? `Need ${cue}` : 'Fill required slots';
+    } else if (!slotsOk && slotCheck?.missingCores?.length) {
+      const cue = slotCheck.missingCores
+        .map((c) => c.name || c.id || c)
+        .filter(Boolean)
+        .slice(0, 2)
+        .join(' · ');
+      $('#tray-hint').textContent = cue ? `Need ${cue}` : 'Missing required ingredients';
+    } else if (!slotsOk) {
+      $('#tray-hint').textContent = 'Fill required slots';
     } else if (state.selected.length >= max && !canCreate) {
       $('#tray-hint').textContent = !legal.ok
         ? `Blocked: ${legal.reason}`
