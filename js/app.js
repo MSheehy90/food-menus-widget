@@ -1195,14 +1195,18 @@
     const showHeads = groups.length > 1;
     grid.innerHTML = groups.map(({ key, items }) => `
       ${showHeads ? sectionHeadHtml(key) : ''}
-      ${items.map((ing) => `
-        <button type="button" class="ing-tile ${sel.has(ing.id) ? 'selected' : ''} ${ingredientNeedsArt(ing) ? 'missing-art' : ''} ${isArtBroken(ing.art) ? 'broken-art' : ''} ${isMade(ing) ? 'is-made' : ''}"
+      ${items.map((ing) => {
+        const display = faceDisplayIngredient(ing);
+        const slicedFace = isSlicedPainting(display?.art, display?.name);
+        return `
+        <button type="button" class="ing-tile ${sel.has(ing.id) ? 'selected' : ''} ${ingredientNeedsArt(display) ? 'missing-art' : ''} ${isArtBroken(display.art) ? 'broken-art' : ''} ${isMade(ing) ? 'is-made' : ''}"
           data-id="${esc(ing.id)}" aria-label="${esc(ing.name)}">
           ${isMade(ing) ? '<span class="chain-cue" title="Process chain" aria-hidden="true"></span>' : ''}
-          ${ingredientHasFlaggedArt(ing) ? '<span class="ing-flag-badge" title="Flagged" aria-label="Flagged">⚑</span>' : ''}
-          ${artHtml(ing)}
-        </button>
-      `).join('')}
+          ${ingredientHasFlaggedArt(display) ? '<span class="ing-flag-badge" title="Flagged" aria-label="Flagged">⚑</span>' : ''}
+          ${slicedFace ? knifeBadgeHtml('on-tile') : ''}
+          ${artHtml(display)}
+        </button>`;
+      }).join('')}
     `).join('');
 
     grid.querySelectorAll('.ing-tile').forEach((btn) => {
@@ -1314,6 +1318,7 @@
       const status = !p.usable
         ? (p.broken ? 'broken' : 'unavailable')
         : (isFace ? 'grid face' : 'alt');
+      const sliced = isSlicedPainting(p.art, p.label);
       const thumb = p.usable
         ? `<img class="art-fit" src="${esc(resolveArtSrc(p.art))}" alt="" draggable="false" data-art="${esc(p.art)}" />`
         : `<span class="name-fallback art-broken">?</span>`;
@@ -1322,7 +1327,7 @@
         : '';
       const flagHtml = detailFlagControlsHtml(p.art, { label: p.label, objectKey });
       return `<div class="detail-variant-row" data-art="${esc(p.art)}">
-        <div class="detail-variant-thumb">${thumb}</div>
+        <div class="detail-variant-thumb">${thumb}${sliced ? knifeBadgeHtml('on-variant') : ''}</div>
         <div class="detail-variant-copy">
           <div class="detail-variant-name">${esc(p.label)}</div>
           <div class="detail-variant-meta">${esc(status)}</div>
@@ -2680,7 +2685,8 @@
       .trim();
     if (!s) return '';
     const strip = new Set([
-      'wedges', 'wedge', 'slices', 'slice', 'halves', 'half',
+      'wedges', 'wedge', 'slices', 'slice', 'sliced', 'slicing',
+      'halves', 'half',
       'chopped', 'bunch', 'unit', 'whole', 'cracked', 'peeled',
       'diced', 'minced', 'grated', 'flakes', 'flake', 'strips', 'strip',
       'boiled', 'seasoned', 'dry', 'aged', 'dried', 'fresh', 'raw',
@@ -2699,8 +2705,40 @@
   }
 
   function isFormishLabel(label) {
-    return /\b(wedges?|slices?|halves?|chopped|flakes?|strips?|streusel|boiled|seasoned|½)\b/i.test(String(label || ''))
+    return /\b(wedges?|sliced|slicing|slices?|halves?|chopped|flakes?|strips?|streusel|boiled|seasoned|½)\b/i.test(String(label || ''))
       || /^½/.test(String(label || ''));
+  }
+
+  /** Sliced / slicing form (not plain "slices" alone) — drives the knife badge. */
+  function isSlicedPainting(art, label) {
+    const labelStr = String(label || '');
+    const stem = String(artStem(art) || '');
+    const human = humanizeArtStem(stem);
+    return /\bsliced\b|\bslicing\b/i.test(labelStr)
+      || /\bsliced\b|\bslicing\b/i.test(human)
+      || /(?:^|[_-])sliced(?:[_-]|$)/i.test(stem)
+      || /(?:^|[_-])slicing(?:[_-]|$)/i.test(stem);
+  }
+
+  function knifeBadgeHtml(extraClass = '') {
+    const cls = extraClass ? `sliced-knife-badge ${extraClass}` : 'sliced-knife-badge';
+    return `<span class="${cls}" title="Sliced" aria-label="Sliced">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+        <path fill="currentColor" d="M3.2 20.2c-.4.4-.4 1 0 1.4.4.4 1 .4 1.4 0L14 12.2l1.1-1.1-2.2-2.2L3.2 20.2zm17.1-12.4c.9-.9.9-2.3 0-3.2-.9-.9-2.3-.9-3.2 0l-1.3 1.3 3.2 3.2 1.3-1.3zM14.6 6.3l-1.5 1.5 3.2 3.2 1.5-1.5-3.2-3.2z"/>
+      </svg>
+    </span>`;
+  }
+
+  /** Prefer the user's chosen grid-face painting for an object when rendering tiles. */
+  function faceDisplayIngredient(ing) {
+    if (!ing) return ing;
+    const key = objectKeyFromLabel(ing.name);
+    if (!key) return ing;
+    const preferred = normalizeArtPath(loadFaceArtMap()[key]);
+    if (preferred && artPathUsable(preferred) && preferred !== normalizeArtPath(ing.art)) {
+      return { ...ing, art: preferred };
+    }
+    return ing;
   }
 
   function artPathUsable(path) {
@@ -3318,17 +3356,21 @@
       const showHeads = groups.length > 1;
       grid.innerHTML = groups.map(({ key, items: list }) => `
         ${showHeads ? sectionHeadHtml(key) : ''}
-        ${list.map((it) => `
+        ${list.map((it) => {
+          const slicedFace = isSlicedPainting(it.art, it.title)
+            || (it.paintings || []).some((p) => normalizeArtPath(p.art) === normalizeArtPath(it.art) && isSlicedPainting(p.art, p.label));
+          return `
           <div class="gal-tile ${isArtBroken(it.art) ? 'broken-art' : ''}" data-gal-id="${esc(it.id)}" title="${esc(it.title)}">
             ${objectHasFlaggedArt(it) ? '<span class="gal-flag-badge" title="Flagged" aria-label="Flagged">⚑</span>' : ''}
+            ${slicedFace ? knifeBadgeHtml('on-tile') : ''}
             <div class="gal-thumb">
               ${isArtBroken(it.art)
                 ? `<span class="name-fallback art-broken">?</span>`
                 : `<img class="art-fit art-${artSizeClass(it.art)}" src="${esc(resolveArtSrc(it.art))}" alt="" loading="lazy" decoding="async" draggable="false" data-art="${esc(it.art)}" />`}
             </div>
             <span class="gal-title">${esc(it.title)}</span>
-          </div>
-        `).join('')}
+          </div>`;
+        }).join('')}
       `).join('');
       const byId = new Map(items.map((it) => [it.id, it]));
       grid.querySelectorAll('.gal-tile').forEach((tile) => {
