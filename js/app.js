@@ -1064,7 +1064,7 @@
         </div>
       ` : ''}
     `;
-    $('#detail-toggle').textContent = state.armedSlotId
+    $('#detail-toggle').textContent = state.armedSlotId && state.mode === 'dish'
       ? 'Add to slot'
       : (onPlate ? 'Remove' : 'Add to plate');
     $('#detail-dialog').showModal();
