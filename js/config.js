@@ -1,7 +1,7 @@
 /* Public runtime config — no secrets. Set GOOGLE_OAUTH_CLIENT_ID when HTTPS + OAuth client exist. */
 window.FOOD_MENUS_CONFIG = Object.freeze({
   /** Google Identity Services OAuth 2.0 Web client id. Leave empty until HTTPS deploy. */
-  GOOGLE_OAUTH_CLIENT_ID: '',
+  GOOGLE_OAUTH_CLIENT_ID: '432420391360-9rlco1jpvh8iav7du930ug93v8v5vmlb.apps.googleusercontent.com',
   /** Bidirectional data-dump sheet (Ingredients / Dishes / Scoring rules / Assets). */
   SHEET_ID: '1GoFYXh1AMKguFIv6XuBwQ7sxFfwN9QWAyx3fn4akl-U',
   SHEET_URL: 'https://docs.google.com/spreadsheets/d/1GoFYXh1AMKguFIv6XuBwQ7sxFfwN9QWAyx3fn4akl-U/edit',
