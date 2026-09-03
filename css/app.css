@@ -1191,6 +1191,82 @@ dialog::backdrop { background: rgba(10,8,6,0.75); }
   color: var(--accent-strong);
   font-weight: 800;
 }
+.detail-variants {
+  margin-top: 0.75rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--line);
+}
+.detail-variants h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--accent-strong);
+}
+.detail-variants .detail-shared {
+  text-align: left;
+  max-width: none;
+  margin: 0 0 0.35rem;
+}
+.detail-variant-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: min(36vh, 14rem);
+  overflow: auto;
+}
+.detail-variant-row {
+  display: grid;
+  grid-template-columns: 2.8rem minmax(0, 1fr);
+  gap: 0.45rem;
+  align-items: center;
+  padding: 0.35rem 0.4rem;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #1a1410;
+}
+.detail-variant-thumb {
+  width: 2.8rem;
+  height: 2.8rem;
+  border-radius: 8px;
+  background: #241c17;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.detail-variant-thumb img {
+  width: 85%;
+  height: 85%;
+  object-fit: contain;
+}
+.detail-variant-thumb .name-fallback {
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+.detail-variant-name {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--ink);
+  line-height: 1.2;
+}
+.detail-variant-meta {
+  font-size: 0.58rem;
+  font-weight: 600;
+  color: var(--dim);
+  margin-top: 0.08rem;
+}
+.detail-variant-use {
+  margin-top: 0.25rem;
+  font-family: inherit;
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 0.22rem 0.4rem;
+  border-radius: 8px;
+  border: 1px solid var(--accent);
+  background: rgba(212, 165, 116, 0.12);
+  color: var(--accent-strong);
+  cursor: pointer;
+  touch-action: manipulation;
+}
 .detail-delete {
   margin-top: 0.85rem;
   padding-top: 0.7rem;
