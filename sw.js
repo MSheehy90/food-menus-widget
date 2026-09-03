@@ -1,5 +1,5 @@
 /* Offline-first service worker for Food Menus PWA */
-const CACHE = 'food-menus-v22';
+const CACHE = 'food-menus-v23';
 const PRECACHE = [
   './',
   './index.html',
@@ -36,13 +36,7 @@ const PRECACHE = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE).then(async (cache) => {
-      // Precache shell; ingredient art is cached on first use.
-      await cache.addAll(PRECACHE);
-      const artReq = await fetch('./data/catalog.json').then((r) => r.json()).catch(() => null);
-      if (artReq?.ingredients) {
-        const urls = [...new Set(artReq.ingredients.map((i) => i.art).filter(Boolean))];
-        await Promise.all(urls.map((u) => cache.add(u).catch(() => null)));
-      }
+      await Promise.all(PRECACHE.map((u) => cache.add(u).catch(() => null)));
     }).then(() => self.skipWaiting())
   );
 });
@@ -55,19 +49,37 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+function isShellData(url) {
+  try {
+    const p = new URL(url).pathname;
+    return /\.(json|txt|js|css)$/i.test(p) || /\/sw\.js$/i.test(p);
+  } catch {
+    return false;
+  }
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
+  const networkFirst = isShellData(req.url);
   event.respondWith(
-    caches.match(req).then((cached) => {
+    (networkFirst ? fetch(req) : caches.match(req)).then((first) => {
+      if (networkFirst) {
+        if (first && first.ok) {
+          const copy = first.clone();
+          caches.open(CACHE).then((cache) => cache.put(req, copy));
+          return first;
+        }
+        return caches.match(req).then((cached) => cached || first);
+      }
       const fetched = fetch(req).then((res) => {
         if (res && res.ok) {
           const copy = res.clone();
           caches.open(CACHE).then((cache) => cache.put(req, copy));
         }
         return res;
-      }).catch(() => cached);
-      return cached || fetched;
-    })
+      }).catch(() => first);
+      return first || fetched;
+    }).catch(() => caches.match(req))
   );
 });
