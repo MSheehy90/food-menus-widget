@@ -40,7 +40,8 @@
     hqPlateGen: 0,
     recipeSlots: [],
     loadedRecipe: null,
-    armedSlotId: null
+    armedSlotId: null,
+    brokenArt: new Set()
   };
 
   const FiveStar = () => window.FoodMenusFiveStar;
@@ -407,12 +408,57 @@
       const glyph = ing.glyph === 'oven' ? 'oven' : 'gear';
       return `<span class="station-glyph ${glyph}" aria-hidden="true"></span>`;
     }
-    if (ing?.art) {
-      const src = resolveArtSrc(ing.art);
-      const sizeCls = `art-fit art-${artSizeClass(ing.art)}`;
-      return `<img class="${esc((cls ? `${cls} ` : '') + sizeCls)}" src="${esc(src)}" alt="" draggable="false" loading="lazy" decoding="async" data-art="${esc(ing.art)}" />`;
+    const art = normalizeArtPath(ing?.art);
+    if (art && !isArtBroken(art)) {
+      const src = resolveArtSrc(art);
+      const sizeCls = `art-fit art-${artSizeClass(art)}`;
+      return `<img class="${esc((cls ? `${cls} ` : '') + sizeCls)}" src="${esc(src)}" alt="" draggable="false" loading="lazy" decoding="async" data-art="${esc(art)}" />`;
+    }
+    if (art && isArtBroken(art)) {
+      return `<span class="name-fallback art-broken" title="${esc(art)}">?</span>`;
     }
     return `<span class="name-fallback">${esc(ing?.name || '?')}</span>`;
+  }
+
+  function isArtBroken(path) {
+    const p = normalizeArtPath(path);
+    return Boolean(p && state.brokenArt.has(p));
+  }
+
+  /** Empty art OR broken/404 art — Gallery Missing set + detail reassign targets. */
+  function ingredientNeedsArt(ing) {
+    if (!ing || ing.isStation) return false;
+    const art = normalizeArtPath(ing.art);
+    return !art || isArtBroken(art);
+  }
+
+  function missingArtIngredients() {
+    return (state.catalog.ingredients || [])
+      .filter(ingredientNeedsArt)
+      .slice()
+      .sort((a, b) => {
+        const d = galleryTypeRank(a.uiType || a.group) - galleryTypeRank(b.uiType || b.group);
+        return d || String(a.name).localeCompare(String(b.name));
+      });
+  }
+
+  function markArtBroken(path, img) {
+    const p = normalizeArtPath(path);
+    if (!p) return;
+    const already = state.brokenArt.has(p);
+    state.brokenArt.add(p);
+    if (img?.parentElement) {
+      img.hidden = true;
+      if (!img.parentElement.querySelector('.art-broken, .name-fallback')) {
+        const span = document.createElement('span');
+        span.className = 'name-fallback art-broken';
+        span.textContent = '?';
+        span.title = p;
+        img.parentElement.appendChild(span);
+      }
+      img.closest('.gal-tile, .ing-tile, .detail-hero')?.classList.add('broken-art');
+    }
+    if (!already && state.galleryMode === 'miss') renderGallery();
   }
 
   /* —— art visual size: bowls larger, condiments smaller, bbox-normalized —— */
@@ -503,9 +549,20 @@
     img.classList.remove('art-bowl', 'art-condiment', 'art-default');
     img.classList.add(`art-${cls}`);
     if (!img.getAttribute('data-art') && path) img.setAttribute('data-art', path);
+    if (!img.dataset.artErrorBound) {
+      img.dataset.artErrorBound = '1';
+      img.addEventListener('error', () => {
+        markArtBroken(img.getAttribute('data-art') || path, img);
+      });
+    }
+    if (img.complete && img.naturalWidth === 0 && img.currentSrc) {
+      markArtBroken(img.getAttribute('data-art') || path, img);
+      return;
+    }
     const target = ART_FILL[cls] || ART_FILL.default;
     // CSS class sets a sensible base; refine with opaque bbox so padded PNGs enlarge.
     measureOpaqueRatio(img).then((ratio) => {
+      if (img.hidden || isArtBroken(img.getAttribute('data-art') || path)) return;
       const pct = Math.min(1.12, Math.max(0.42, target / Math.max(ratio, 0.18)));
       img.style.width = `${Math.round(pct * 1000) / 10}%`;
       img.style.height = `${Math.round(pct * 1000) / 10}%`;
@@ -958,42 +1015,134 @@
     return dedupeLockerByArt(ids.map((id) => state.byId.get(id)).filter(take));
   }
 
-  function bindTileGestures(btn, ing) {
+  /**
+   * Long-press (~480ms) or double-click / second-tap-within-~350ms → open detail.
+   * Single tap (after double-tap window) runs onSingleTap when provided (locker add/arm).
+   * Long-press must not also fire the single-tap action.
+   */
+  function bindPressOpenDetail(el, openFn, { onSingleTap = null } = {}) {
     let pressTimer = null;
     let longFired = false;
+    let lastTapAt = 0;
+    let singleTimer = null;
 
-    const clear = () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } };
+    const clearPress = () => {
+      if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+    };
+    const clearSingle = () => {
+      if (singleTimer) { clearTimeout(singleTimer); singleTimer = null; }
+    };
+    const blockedTarget = (target) => Boolean(
+      target?.closest?.('select, input, textarea, label.gal-miss-drop, a, menu button')
+    );
 
-    btn.addEventListener('pointerdown', (e) => {
+    el.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+    });
+
+    el.addEventListener('pointerdown', (e) => {
+      if (blockedTarget(e.target)) return;
       longFired = false;
-      btn.setPointerCapture?.(e.pointerId);
+      try { el.setPointerCapture?.(e.pointerId); } catch { /* ignore */ }
       pressTimer = setTimeout(() => {
         longFired = true;
-        openDetail(ing, { forceChain: true });
+        clearSingle();
+        lastTapAt = 0;
+        openFn();
       }, 480);
     });
-    btn.addEventListener('pointerup', () => {
-      clear();
+
+    el.addEventListener('pointerup', (e) => {
+      clearPress();
       if (longFired) return;
-      if (state.armedSlotId && state.mode === 'dish') {
-        // Slot options are recipe metadata — never plate occupancy / Plate full
-        addOptionToSlot(state.armedSlotId, ing, { moveOffPlate: false });
+      if (blockedTarget(e.target)) return;
+      const now = Date.now();
+      if (lastTapAt && now - lastTapAt < 350) {
+        lastTapAt = 0;
+        clearSingle();
+        openFn();
         return;
       }
-      addToPlate(ing);
+      lastTapAt = now;
+      if (!onSingleTap) return;
+      clearSingle();
+      singleTimer = setTimeout(() => {
+        singleTimer = null;
+        onSingleTap();
+      }, 350);
     });
-    btn.addEventListener('pointercancel', clear);
-    btn.addEventListener('pointerleave', clear);
+
+    el.addEventListener('pointercancel', () => {
+      clearPress();
+      clearSingle();
+    });
+    el.addEventListener('pointerleave', clearPress);
+
+    el.addEventListener('dblclick', (e) => {
+      if (blockedTarget(e.target)) return;
+      e.preventDefault();
+      clearPress();
+      clearSingle();
+      lastTapAt = 0;
+      openFn();
+    });
+
+    el.addEventListener('dragstart', () => {
+      clearPress();
+      clearSingle();
+      lastTapAt = 0;
+      longFired = true; // suppress the following pointerup single-tap
+    });
+  }
+
+  function bindTileGestures(btn, ing) {
+    bindPressOpenDetail(
+      btn,
+      () => openDetail(ing, { forceChain: true }),
+      {
+        onSingleTap: () => {
+          if (state.armedSlotId && state.mode === 'dish') {
+            addOptionToSlot(state.armedSlotId, ing, { moveOffPlate: false });
+            return;
+          }
+          addToPlate(ing);
+        }
+      }
+    );
 
     // drag onto plate / slot (desktop)
     btn.addEventListener('dragstart', (e) => {
-      clear();
       btn.classList.add('dragging');
       e.dataTransfer.setData('text/ing-id', ing.id);
       e.dataTransfer.effectAllowed = 'copy';
     });
     btn.addEventListener('dragend', () => btn.classList.remove('dragging'));
     btn.setAttribute('draggable', 'true');
+  }
+
+  function sectionHeadHtml(label) {
+    return `<div class="ing-section-head" role="presentation">${esc(label)}</div>`;
+  }
+
+  function groupInOrder(items, keyFn) {
+    const order = [];
+    const map = new Map();
+    (items || []).forEach((item) => {
+      const key = keyFn(item) || 'Other';
+      if (!map.has(key)) {
+        map.set(key, []);
+        order.push(key);
+      }
+      map.get(key).push(item);
+    });
+    return order.map((key) => ({ key, items: map.get(key) }));
+  }
+
+  function lockerSectionLabel(ing) {
+    if (state.family === '__all__') {
+      return ing.uiFamily || ing.category || 'Other';
+    }
+    return ing.category || ing.uiFamily || state.family || 'Other';
   }
 
   function renderGrid() {
@@ -1005,13 +1154,24 @@
       : (state.stage === 'made' ? 'No made ingredients here' : 'Empty family');
     const grid = $('#ingredient-grid');
     grid.classList.toggle('slot-arming', armed);
-    grid.innerHTML = ings.map((ing) => `
-      <button type="button" class="ing-tile ${sel.has(ing.id) ? 'selected' : ''} ${ing.art ? '' : 'missing-art'} ${isMade(ing) ? 'is-made' : ''}"
-        data-id="${esc(ing.id)}" aria-label="${esc(ing.name)}">
-        ${isMade(ing) ? '<span class="chain-cue" title="Process chain" aria-hidden="true"></span>' : ''}
-        ${artHtml(ing)}
-      </button>
-    `).join('') || `<p class="muted" style="grid-column:1/-1;text-align:center">${esc(emptyMsg)}</p>`;
+
+    if (!ings.length) {
+      grid.innerHTML = `<p class="muted" style="grid-column:1/-1;text-align:center">${esc(emptyMsg)}</p>`;
+      return;
+    }
+
+    const groups = groupInOrder(ings, lockerSectionLabel);
+    const showHeads = groups.length > 1;
+    grid.innerHTML = groups.map(({ key, items }) => `
+      ${showHeads ? sectionHeadHtml(key) : ''}
+      ${items.map((ing) => `
+        <button type="button" class="ing-tile ${sel.has(ing.id) ? 'selected' : ''} ${ingredientNeedsArt(ing) ? 'missing-art' : ''} ${isArtBroken(ing.art) ? 'broken-art' : ''} ${isMade(ing) ? 'is-made' : ''}"
+          data-id="${esc(ing.id)}" aria-label="${esc(ing.name)}">
+          ${isMade(ing) ? '<span class="chain-cue" title="Process chain" aria-hidden="true"></span>' : ''}
+          ${artHtml(ing)}
+        </button>
+      `).join('')}
+    `).join('');
 
     grid.querySelectorAll('.ing-tile').forEach((btn) => {
       const ing = state.byId.get(btn.dataset.id);
@@ -1044,16 +1204,54 @@
     renderGrid();
   }
 
+  function detailMetaChipsHtml(ing) {
+    const chips = [];
+    const push = (label, value) => {
+      const v = String(value || '').trim();
+      if (!v) return;
+      chips.push(`<span class="detail-meta-chip">${esc(label)} <strong>${esc(v)}</strong></span>`);
+    };
+    push('uiType', ing.uiType);
+    push('uiFamily', ing.uiFamily);
+    push('group', ing.group);
+    push('category', ing.category);
+    push('type', ing.type);
+    return chips.length ? `<div class="detail-meta">${chips.join('')}</div>` : '';
+  }
+
+  function detailReassignHtml(ing) {
+    const artPath = normalizeArtPath(ing?.art);
+    if (!artPath || isArtBroken(artPath)) return '';
+    const missing = missingArtIngredients().filter((m) => m.id !== ing.id);
+    const list = missing.length
+      ? missing.map((m) => {
+        const bits = [m.uiType, m.uiFamily || m.category].filter(Boolean).join(' · ');
+        const why = !normalizeArtPath(m.art) ? 'empty' : 'broken';
+        return `<button type="button" class="detail-reassign-btn" data-missing-id="${esc(m.id)}">
+          ${esc(m.name)}
+          <span class="meta">${esc(bits || why)} · ${esc(why)}</span>
+        </button>`;
+      }).join('')
+      : `<p class="detail-reassign-empty">No missing catalog names right now.</p>`;
+    return `
+      <div class="detail-reassign">
+        <h3>Give this picture to a missing name</h3>
+        <div class="detail-reassign-list">${list}</div>
+      </div>`;
+  }
+
   function openDetail(ing, { forceChain = false } = {}) {
     state.detailIng = ing;
-    const onPlate = selectedIds().has(ing.id);
+    const onPlate = ing?.id && selectedIds().has(ing.id);
+    const inCatalog = Boolean(ing?.id && state.byId.has(ing.id));
     const chain = resolveChainIngs(ing);
     const showChain = forceChain || isMade(ing) || chain.length > 1;
 
     $('#detail-body').innerHTML = `
       <div class="detail-hero">
         <div class="big-ico">${artHtml(ing)}</div>
-        ${ing.art ? '' : `<p class="muted" style="margin:0;font-weight:800">${esc(ing.name)}</p>`}
+        <p class="detail-name">${esc(ing?.name || '')}</p>
+        ${detailMetaChipsHtml(ing)}
       </div>
       ${showChain ? `
         <div class="chain-row" aria-label="Process chain">
@@ -1063,10 +1261,28 @@
           `).join('')}
         </div>
       ` : ''}
+      ${detailReassignHtml(ing)}
     `;
-    $('#detail-toggle').textContent = state.armedSlotId && state.mode === 'dish'
-      ? 'Add to slot'
-      : (onPlate ? 'Remove' : 'Add to plate');
+
+    const toggle = $('#detail-toggle');
+    if (toggle) {
+      toggle.hidden = !inCatalog;
+      toggle.textContent = state.armedSlotId && state.mode === 'dish'
+        ? 'Add to slot'
+        : (onPlate ? 'Remove' : 'Add to plate');
+    }
+
+    $('#detail-body').querySelectorAll('.detail-reassign-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const missingId = btn.getAttribute('data-missing-id');
+        const artPath = normalizeArtPath(ing.art);
+        if (!missingId || !artPath) return;
+        assignArtToIngredient(missingId, artPath);
+        $('#detail-dialog')?.close();
+      });
+    });
+
+    enhanceArtImages($('#detail-body'));
     $('#detail-dialog').showModal();
   }
 
@@ -1669,18 +1885,27 @@
   }
 
   function inferUiTypeFromStem(stem) {
+    return inferUiMetaFromStem(stem).type;
+  }
+
+  function inferUiMetaFromStem(stem) {
     const key = normalizeArtKey(stem);
-    if (!key) return 'Untitled';
+    if (!key) return { type: 'Untitled', family: 'Extras' };
     let best = null;
     for (const ing of state.catalog.ingredients || []) {
       const idKey = normalizeArtKey(ing.id);
       const nameKey = normalizeArtKey(ing.name);
       if (key === idKey || key === nameKey || key.endsWith(idKey) || idKey && key.includes(idKey)) {
         const t = ing.uiType || ing.group || 'Other';
-        if (!best || String(ing.name).length > String(best.name).length) best = { name: ing.name, type: t };
+        const family = ing.uiFamily || ing.category || 'Extras';
+        if (!best || String(ing.name).length > String(best.name).length) {
+          best = { name: ing.name, type: t, family };
+        }
       }
     }
-    return best?.type || 'Untitled';
+    return best
+      ? { type: best.type, family: best.family }
+      : { type: 'Untitled', family: 'Extras' };
   }
 
   function referencedArtPaths() {
@@ -1740,14 +1965,14 @@
   function catalogNameOptionsHtml() {
     const ings = [...(state.catalog.ingredients || [])];
     ings.sort((a, b) => {
-      const aEmpty = a.art ? 1 : 0;
-      const bEmpty = b.art ? 1 : 0;
-      if (aEmpty !== bEmpty) return aEmpty - bEmpty; // empty-art first
+      const aEmpty = ingredientNeedsArt(a) ? 0 : 1;
+      const bEmpty = ingredientNeedsArt(b) ? 0 : 1;
+      if (aEmpty !== bEmpty) return aEmpty - bEmpty; // missing/broken first
       return String(a.name).localeCompare(String(b.name));
     });
     return [`<option value="">name this</option>`]
       .concat(ings.map((ing) => {
-        const mark = ing.art ? '' : ' · empty';
+        const mark = !normalizeArtPath(ing.art) ? ' · empty' : (isArtBroken(ing.art) ? ' · broken' : '');
         return `<option value="${esc(ing.id)}">${esc(ing.name)}${mark}</option>`;
       }))
       .join('');
@@ -1848,6 +2073,8 @@
       }
     });
     ing.art = path;
+    // Reassigned path is treated as usable unless a later img error marks it again
+    state.brokenArt.delete(path);
     persistIngredientArt(ing);
     rebuildIndexes();
     renderGrid();
@@ -1915,11 +2142,17 @@
         group = {
           art,
           names: [],
-          uiType: ing.uiType || ing.group || 'Other'
+          ingredients: [],
+          uiType: ing.uiType || ing.group || 'Other',
+          uiFamily: ing.uiFamily || ing.category || '',
+          category: ing.category || '',
+          group: ing.group || '',
+          type: ing.type || ''
         };
         byPath.set(art, group);
       }
       group.names.push(ing.name);
+      group.ingredients.push(ing);
     });
 
     const items = [];
@@ -1934,8 +2167,13 @@
         title,
         art: group.art,
         uiType: group.uiType,
+        uiFamily: group.uiFamily,
+        category: group.category,
+        group: group.group,
+        type: group.type,
         untitled: false,
-        names
+        names,
+        ingredients: group.ingredients
       });
     });
 
@@ -1944,12 +2182,17 @@
       if (byPath.has(path)) return;
       const stem = artStem(path);
       const title = humanizeArtStem(stem);
+      const meta = inferUiMetaFromStem(stem);
       items.push({
         kind: 'named-file',
         id: `file:${path}`,
         title,
         art: path,
-        uiType: inferUiTypeFromStem(stem),
+        uiType: meta.type === 'Untitled' ? 'Other' : meta.type,
+        uiFamily: meta.family || 'Extras',
+        category: '',
+        group: '',
+        type: '',
         untitled: false,
         names: [title]
       });
@@ -1958,9 +2201,41 @@
     items.sort((a, b) => {
       const d = galleryTypeRank(a.uiType) - galleryTypeRank(b.uiType);
       if (d) return d;
+      const fa = String(a.uiFamily || a.category || '');
+      const fb = String(b.uiFamily || b.category || '');
+      const df = fa.localeCompare(fb);
+      if (df) return df;
       return String(a.title).localeCompare(String(b.title));
     });
     return items;
+  }
+
+  function paintedSectionLabel(it) {
+    return it.uiFamily || it.category || (it.kind === 'named-file' ? 'Extras' : 'Other');
+  }
+
+  function ingredientForGalleryItem(it) {
+    if (!it) return null;
+    if (it.kind === 'named' && it.ingredients?.length) {
+      return it.ingredients[0];
+    }
+    if (it.kind === 'named') {
+      const art = normalizeArtPath(it.art);
+      const match = (state.catalog.ingredients || []).find((ing) => normalizeArtPath(ing.art) === art);
+      if (match) return match;
+    }
+    return {
+      id: it.id,
+      name: it.title,
+      art: it.art,
+      uiType: it.uiType || '',
+      uiFamily: it.uiFamily || 'Extras',
+      group: it.group || '',
+      category: it.category || '',
+      type: it.type || '',
+      chain: [it.title],
+      source: 'gallery-file'
+    };
   }
 
   function galleryQueryMatch(text) {
@@ -1990,6 +2265,16 @@
       }
     });
     input?.addEventListener('change', commitNew);
+  }
+
+  function bindGalleryDetailTile(tile, itemOrIng) {
+    const open = () => {
+      const ing = itemOrIng?.kind
+        ? ingredientForGalleryItem(itemOrIng)
+        : itemOrIng;
+      if (ing) openDetail(ing, { forceChain: true });
+    };
+    bindPressOpenDetail(tile, open);
   }
 
   function bindMissingDropRow(row) {
@@ -2040,16 +2325,34 @@
         galleryQueryMatch(artStem(it.art)) ||
         galleryQueryMatch(humanizeArtStem(artStem(it.art))) ||
         galleryQueryMatch(it.uiType) ||
+        galleryQueryMatch(it.uiFamily) ||
+        galleryQueryMatch(it.category) ||
         (it.names || []).some((n) => galleryQueryMatch(n))
       );
-      grid.innerHTML = items.map((it) => `
-        <div class="gal-tile" title="${esc(it.title)}">
-          <div class="gal-thumb">
-            <img class="art-fit art-${artSizeClass(it.art)}" src="${esc(resolveArtSrc(it.art))}" alt="" loading="lazy" decoding="async" draggable="false" data-art="${esc(it.art)}" />
+      if (!items.length) {
+        grid.innerHTML = `<p class="muted" style="grid-column:1/-1;text-align:center">None</p>`;
+        return;
+      }
+      const groups = groupInOrder(items, paintedSectionLabel);
+      const showHeads = groups.length > 1;
+      grid.innerHTML = groups.map(({ key, items: list }) => `
+        ${showHeads ? sectionHeadHtml(key) : ''}
+        ${list.map((it) => `
+          <div class="gal-tile ${isArtBroken(it.art) ? 'broken-art' : ''}" data-gal-id="${esc(it.id)}" title="${esc(it.title)}">
+            <div class="gal-thumb">
+              ${isArtBroken(it.art)
+                ? `<span class="name-fallback art-broken">?</span>`
+                : `<img class="art-fit art-${artSizeClass(it.art)}" src="${esc(resolveArtSrc(it.art))}" alt="" loading="lazy" decoding="async" draggable="false" data-art="${esc(it.art)}" />`}
+            </div>
+            <span class="gal-title">${esc(it.title)}</span>
           </div>
-          <span class="gal-title">${esc(it.title)}</span>
-        </div>
-      `).join('') || `<p class="muted" style="grid-column:1/-1;text-align:center">None</p>`;
+        `).join('')}
+      `).join('');
+      const byId = new Map(items.map((it) => [it.id, it]));
+      grid.querySelectorAll('.gal-tile').forEach((tile) => {
+        const it = byId.get(tile.getAttribute('data-gal-id'));
+        if (it) bindGalleryDetailTile(tile, it);
+      });
       enhanceArtImages(grid);
       return;
     }
@@ -2073,22 +2376,29 @@
           <input type="text" class="gal-new-name" placeholder="new name…" aria-label="New name for ${esc(stem)}" autocomplete="off" />
         </div>`;
       }).join('') || `<p class="muted" style="grid-column:1/-1;text-align:center">None</p>`;
-      grid.querySelectorAll('.gal-tile.untitled').forEach(bindUntitledTile);
+      grid.querySelectorAll('.gal-tile.untitled').forEach((tile) => {
+        bindUntitledTile(tile);
+        const path = tile.getAttribute('data-art');
+        bindGalleryDetailTile(tile, {
+          kind: 'named-file',
+          id: `file:${path}`,
+          title: artStem(path).toLowerCase(),
+          art: path,
+          uiType: 'Untitled',
+          uiFamily: 'Extras',
+          names: [artStem(path).toLowerCase()]
+        });
+      });
       enhanceArtImages(grid);
       return;
     }
 
-    const missing = (state.catalog.ingredients || [])
-      .filter((ing) => !ing.art)
-      .filter((ing) => galleryQueryMatch(ing.name) || galleryQueryMatch(ing.uiType || ing.group))
-      .sort((a, b) => {
-        const d = galleryTypeRank(a.uiType || a.group) - galleryTypeRank(b.uiType || b.group);
-        return d || String(a.name).localeCompare(String(b.name));
-      });
+    const missing = missingArtIngredients()
+      .filter((ing) => galleryQueryMatch(ing.name) || galleryQueryMatch(ing.uiType || ing.group) || galleryQueryMatch(ing.uiFamily || ing.category));
 
     grid.innerHTML = missing.map((ing) => `
       <div class="gal-miss-row" data-ing-id="${esc(ing.id)}">
-        <span class="gal-miss-name">${esc(ing.name)}</span>
+        <span class="gal-miss-name">${esc(ing.name)}${isArtBroken(ing.art) ? ' · broken' : ''}</span>
         <label class="gal-miss-drop">
           <input type="file" class="gal-miss-file" accept="image/*" hidden />
           <span class="gal-miss-drop-hint">Drop image or tap to pick</span>
@@ -2601,6 +2911,7 @@
 
     $('#detail-dialog').addEventListener('close', () => {
       if ($('#detail-dialog').returnValue === 'toggle' && state.detailIng) {
+        if (!state.byId.has(state.detailIng.id)) return;
         if (state.armedSlotId && state.mode === 'dish') {
           addOptionToSlot(state.armedSlotId, state.detailIng, { moveOffPlate: false });
         } else {
