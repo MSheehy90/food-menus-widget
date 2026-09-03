@@ -13,6 +13,7 @@
     type: null,
     family: '__all__',
     stage: 'all',
+    formFilter: '',
     lockerSearch: '',
     dishesSearch: '',
     processSearch: '',
@@ -897,6 +898,22 @@
     });
   }
 
+  function renderFormRail() {
+    const el = $('#form-rail');
+    if (!el) return;
+    el.querySelectorAll('.form-chip').forEach((btn) => {
+      const form = btn.dataset.form || '';
+      const on = state.formFilter === form;
+      btn.classList.toggle('active', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      btn.onclick = () => {
+        state.formFilter = on ? '' : form;
+        renderFormRail();
+        renderGrid();
+      };
+    });
+  }
+
   function renderTypeRail() {
     const order = state.catalog.typeOrder;
     $('#type-rail').innerHTML = order.map((t) => `
@@ -1177,12 +1194,14 @@
   }
 
   function renderGrid() {
-    const ings = familyIngredients();
+    const ings = applyLockerFormFilter(familyIngredients());
     const sel = selectedIds();
     const armed = Boolean(state.armedSlotId && state.mode === 'dish');
     const emptyMsg = state.lockerSearch.trim()
       ? 'No ingredients match'
-      : (state.stage === 'made' ? 'No made ingredients here' : 'Empty family');
+      : (state.formFilter
+        ? `No ${state.formFilter} forms here`
+        : (state.stage === 'made' ? 'No made ingredients here' : 'Empty family'));
     const grid = $('#ingredient-grid');
     grid.classList.toggle('slot-arming', armed);
 
@@ -1196,15 +1215,15 @@
     grid.innerHTML = groups.map(({ key, items }) => `
       ${showHeads ? sectionHeadHtml(key) : ''}
       ${items.map((ing) => {
-        const display = faceDisplayIngredient(ing);
-        const slicedFace = isSlicedPainting(display?.art, display?.name);
+        const faceForm = ing._formFace || inferPaintingForm(ing.art, ing._formLabel || ing.name);
+        const badge = (faceForm && faceForm !== 'whole') ? formBadgeHtml(faceForm, 'on-tile') : '';
         return `
-        <button type="button" class="ing-tile ${sel.has(ing.id) ? 'selected' : ''} ${ingredientNeedsArt(display) ? 'missing-art' : ''} ${isArtBroken(display.art) ? 'broken-art' : ''} ${isMade(ing) ? 'is-made' : ''}"
+        <button type="button" class="ing-tile ${sel.has(ing.id) ? 'selected' : ''} ${ingredientNeedsArt(ing) ? 'missing-art' : ''} ${isArtBroken(ing.art) ? 'broken-art' : ''} ${isMade(ing) ? 'is-made' : ''}"
           data-id="${esc(ing.id)}" aria-label="${esc(ing.name)}">
           ${isMade(ing) ? '<span class="chain-cue" title="Process chain" aria-hidden="true"></span>' : ''}
-          ${ingredientHasFlaggedArt(display) ? '<span class="ing-flag-badge" title="Flagged" aria-label="Flagged">⚑</span>' : ''}
-          ${slicedFace ? knifeBadgeHtml('on-tile') : ''}
-          ${artHtml(display)}
+          ${ingredientHasFlaggedArt(ing) ? '<span class="ing-flag-badge" title="Flagged" aria-label="Flagged">⚑</span>' : ''}
+          ${badge}
+          ${artHtml(ing)}
         </button>`;
       }).join('')}
     `).join('');
@@ -1318,7 +1337,7 @@
       const status = !p.usable
         ? (p.broken ? 'broken' : 'unavailable')
         : (isFace ? 'grid face' : 'alt');
-      const sliced = isSlicedPainting(p.art, p.label);
+      const form = inferPaintingForm(p.art, p.label);
       const thumb = p.usable
         ? `<img class="art-fit" src="${esc(resolveArtSrc(p.art))}" alt="" draggable="false" data-art="${esc(p.art)}" />`
         : `<span class="name-fallback art-broken">?</span>`;
@@ -1327,7 +1346,7 @@
         : '';
       const flagHtml = detailFlagControlsHtml(p.art, { label: p.label, objectKey });
       return `<div class="detail-variant-row" data-art="${esc(p.art)}">
-        <div class="detail-variant-thumb">${thumb}${sliced ? knifeBadgeHtml('on-variant') : ''}</div>
+        <div class="detail-variant-thumb">${thumb}${formBadgeHtml(form, 'on-variant')}</div>
         <div class="detail-variant-copy">
           <div class="detail-variant-name">${esc(p.label)}</div>
           <div class="detail-variant-meta">${esc(status)}</div>
@@ -2710,23 +2729,52 @@
   }
 
   /** Sliced / slicing form (not plain "slices" alone) — drives the knife badge. */
-  function isSlicedPainting(art, label) {
-    const labelStr = String(label || '');
+  function inferPaintingForm(art, label) {
+    if (Sync()?.inferPaintingForm) return Sync().inferPaintingForm(art, label);
     const stem = String(artStem(art) || '');
     const human = humanizeArtStem(stem);
-    return /\bsliced\b|\bslicing\b/i.test(labelStr)
-      || /\bsliced\b|\bslicing\b/i.test(human)
-      || /(?:^|[_-])sliced(?:[_-]|$)/i.test(stem)
-      || /(?:^|[_-])slicing(?:[_-]|$)/i.test(stem);
+    const blob = `${label || ''} ${human} ${stem.replace(/[-_]+/g, ' ')}`.toLowerCase().replace(/½/g, ' half ');
+    if (/\b(sliced|slices|slice|wedges|wedge|strips|strip)\b/.test(blob)) return 'sliced';
+    if (
+      /\b(unit|sprinkle|single|flakes|flake|pieces|piece|garnish)\b/.test(blob)
+      || /\bhalves?\b/.test(blob)
+      || /\bhalf\b/.test(blob)
+    ) return 'unit';
+    if (/\b(diced|chopped|mince|minced|shredded)\b/.test(blob)) return 'diced';
+    return 'whole';
+  }
+
+  function isSlicedPainting(art, label) {
+    return inferPaintingForm(art, label) === 'sliced';
+  }
+
+  function formBadgeHtml(form, extraClass = '') {
+    const kind = String(form || '').toLowerCase();
+    if (kind !== 'sliced' && kind !== 'diced' && kind !== 'unit') return '';
+    const cls = ['form-badge', `form-${kind}`, extraClass].filter(Boolean).join(' ');
+    const label = kind === 'sliced' ? 'Sliced' : (kind === 'diced' ? 'Diced' : 'Single unit');
+    let svg = '';
+    if (kind === 'sliced') {
+      svg = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+        <path fill="currentColor" d="M3.2 20.2c-.4.4-.4 1 0 1.4.4.4 1 .4 1.4 0L14 12.2l1.1-1.1-2.2-2.2L3.2 20.2zm17.1-12.4c.9-.9.9-2.3 0-3.2-.9-.9-2.3-.9-3.2 0l-1.3 1.3 3.2 3.2 1.3-1.3zM14.6 6.3l-1.5 1.5 3.2 3.2 1.5-1.5-3.2-3.2z"/>
+      </svg>`;
+    } else if (kind === 'diced') {
+      svg = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+        <rect x="3" y="3" width="8" height="8" rx="1.5" fill="currentColor"/>
+        <rect x="13" y="3" width="8" height="8" rx="1.5" fill="currentColor"/>
+        <rect x="3" y="13" width="8" height="8" rx="1.5" fill="currentColor"/>
+        <rect x="13" y="13" width="8" height="8" rx="1.5" fill="currentColor"/>
+      </svg>`;
+    } else {
+      svg = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+        <rect x="7" y="7" width="10" height="10" rx="2.5" fill="currentColor"/>
+      </svg>`;
+    }
+    return `<span class="${cls}" title="${esc(label)}" aria-label="${esc(label)}">${svg}</span>`;
   }
 
   function knifeBadgeHtml(extraClass = '') {
-    const cls = extraClass ? `sliced-knife-badge ${extraClass}` : 'sliced-knife-badge';
-    return `<span class="${cls}" title="Sliced" aria-label="Sliced">
-      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
-        <path fill="currentColor" d="M3.2 20.2c-.4.4-.4 1 0 1.4.4.4 1 .4 1.4 0L14 12.2l1.1-1.1-2.2-2.2L3.2 20.2zm17.1-12.4c.9-.9.9-2.3 0-3.2-.9-.9-2.3-.9-3.2 0l-1.3 1.3 3.2 3.2 1.3-1.3zM14.6 6.3l-1.5 1.5 3.2 3.2 1.5-1.5-3.2-3.2z"/>
-      </svg>
-    </span>`;
+    return formBadgeHtml('sliced', extraClass);
   }
 
   /** Prefer the user's chosen grid-face painting for an object when rendering tiles. */
@@ -2739,6 +2787,51 @@
       return { ...ing, art: preferred };
     }
     return ing;
+  }
+
+  /** Find a painting (or named sibling) matching the active form filter. */
+  function findFormPaintingForIngredient(ing, form) {
+    if (!ing || !form) return null;
+    const obj = resolveGalleryObject(ing);
+    const paintings = obj?.paintings?.length
+      ? obj.paintings
+      : [{ art: ing.art, label: ing.name }];
+    const hit = paintings.find((p) => inferPaintingForm(p.art, p.label) === form);
+    if (hit) return hit;
+    const key = objectKeyFromLabel(ing.name);
+    const sibling = (state.catalog.ingredients || []).find((other) => (
+      other.id !== ing.id
+      && objectKeyFromLabel(other.name) === key
+      && inferPaintingForm(other.art, other.name) === form
+    ));
+    if (sibling && normalizeArtPath(sibling.art)) {
+      return { art: sibling.art, label: sibling.name, ingId: sibling.id };
+    }
+    // Name-only form match (no dedicated art) — still counts for filter membership.
+    const nameHit = (obj?.names || [ing.name]).find((n) => inferPaintingForm('', n) === form);
+    if (nameHit) return { art: '', label: nameHit };
+    return null;
+  }
+
+  function applyLockerFormFilter(ings) {
+    const form = state.formFilter;
+    if (!form) {
+      return (ings || []).map((ing) => faceDisplayIngredient(ing));
+    }
+    const out = [];
+    (ings || []).forEach((ing) => {
+      const match = findFormPaintingForIngredient(ing, form);
+      if (!match) return;
+      const base = faceDisplayIngredient(ing);
+      const art = normalizeArtPath(match.art) || normalizeArtPath(base.art);
+      out.push({
+        ...base,
+        art: art || base.art,
+        _formFace: form,
+        _formLabel: match.label || base.name
+      });
+    });
+    return out;
   }
 
   function artPathUsable(path) {
@@ -3357,12 +3450,13 @@
       grid.innerHTML = groups.map(({ key, items: list }) => `
         ${showHeads ? sectionHeadHtml(key) : ''}
         ${list.map((it) => {
-          const slicedFace = isSlicedPainting(it.art, it.title)
-            || (it.paintings || []).some((p) => normalizeArtPath(p.art) === normalizeArtPath(it.art) && isSlicedPainting(p.art, p.label));
+          const paintLabel = ((it.paintings || []).find((p) => normalizeArtPath(p.art) === normalizeArtPath(it.art)) || {}).label || it.title;
+          const faceForm = inferPaintingForm(it.art, paintLabel);
+          const badge = (faceForm && faceForm !== 'whole') ? formBadgeHtml(faceForm, 'on-tile') : '';
           return `
           <div class="gal-tile ${isArtBroken(it.art) ? 'broken-art' : ''}" data-gal-id="${esc(it.id)}" title="${esc(it.title)}">
             ${objectHasFlaggedArt(it) ? '<span class="gal-flag-badge" title="Flagged" aria-label="Flagged">⚑</span>' : ''}
-            ${slicedFace ? knifeBadgeHtml('on-tile') : ''}
+            ${badge}
             <div class="gal-thumb">
               ${isArtBroken(it.art)
                 ? `<span class="name-fallback art-broken">?</span>`
@@ -3536,6 +3630,7 @@
             prev.name === row.name &&
             prev.art_url === row.art_url &&
             prev.process_chain === row.process_chain &&
+            prev.form === row.form &&
             prev.hunger_key === row.hunger_key &&
             prev.flavor_key === row.flavor_key &&
             prev.star_roles === row.star_roles;
@@ -3563,10 +3658,20 @@
     try {
       const result = await Sync().pullFromSheet({ onStatus: setDriveStatus });
       if (result.reason === 'missing-client-id') {
-        setDriveStatus('Live two-way needs HTTPS + Google sign-in');
+        const baked = await Sync().loadBakedFoodMasterRows();
+        const stats = Sync().applyFoodMasterRowsToCatalog(state.catalog, baked);
+        applyDeletedArtDenylistToCatalog();
+        rebuildIndexes();
+        renderGrid();
+        renderGallery();
+        setDriveStatus(`Merged baked Food Master · +${stats.created} / ~${stats.updated} · live two-way needs HTTPS + Google sign-in`);
         return;
       }
       Sync().applyIngredientRowsToCatalog(state.catalog, result.store.ingredients, result.store.assets);
+      const masterRows = result.foodMasterRows?.length
+        ? result.foodMasterRows
+        : await Sync().loadBakedFoodMasterRows();
+      const fmStats = Sync().applyFoodMasterRowsToCatalog(state.catalog, masterRows);
       applyDeletedArtDenylistToCatalog();
       rebuildIndexes();
       // Merge dishes from sheet into kept
@@ -3596,7 +3701,7 @@
       renderGrid();
       renderTray();
       renderGallery();
-      setDriveStatus(`Merged from sheet · ${state.kept.length} kept · ${Sync().dirtyCount(result.store)} dirty`);
+      setDriveStatus(`Merged from sheet · Food Master +${fmStats.created}/~${fmStats.updated} · ${state.kept.length} kept · ${Sync().dirtyCount(result.store)} dirty`);
     } catch (err) {
       setDriveStatus(err.message || String(err));
       alert(err.message || String(err));
@@ -3993,6 +4098,12 @@
     $('#btn-export').addEventListener('click', exportKept);
     $('#btn-save-drive').addEventListener('click', () => { saveToDrive(); });
     $('#btn-sync-pull').addEventListener('click', () => { pullFromSheet(); });
+    const fmBtn = $('#btn-food-master');
+    if (fmBtn) {
+      const url = window.FOOD_MENUS_CONFIG?.FOOD_MASTER_SHEET_URL
+        || 'https://docs.google.com/spreadsheets/d/1ShKoeUKdthTgd6Y2zmAyNkUiv0wpkqmOyaZ1D_TX7DQ/edit';
+      fmBtn.setAttribute('href', url);
+    }
 
     $('#locker-search')?.addEventListener('input', (e) => {
       state.lockerSearch = e.target.value || '';
@@ -4069,12 +4180,14 @@
     state.type = state.catalog.typeOrder[0];
     state.family = '__all__';
     state.stage = 'all';
+    state.formFilter = '';
     // Default process highlight: ramen noodles (full list still browsable)
     const ramen = P().listProcessOptions(state.processData.catalog, state.processData.byOutput)
       .find((o) => o.output === 'Ramen noodles');
     if (ramen) selectProcess(ramen.id, ramen.output);
 
     renderStageRail();
+    renderFormRail();
     renderTypeRail();
     renderFamilies();
     renderGrid();
