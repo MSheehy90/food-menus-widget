@@ -442,15 +442,20 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   border: 1px dashed var(--line);
   background: rgba(36,28,23,0.55);
   min-height: 3.2rem;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
-.recipe-slot.drag-over {
+.recipe-slot.drag-over,
+.recipe-slot.armed {
   border-color: var(--accent);
   border-style: solid;
-  background: rgba(212, 160, 80, 0.12);
+  background: rgba(212, 160, 80, 0.14);
+  box-shadow: 0 0 0 2px rgba(212, 160, 80, 0.35);
 }
 .recipe-slot.readonly {
   border-style: solid;
+  cursor: default;
 }
 .recipe-slot-head {
   display: flex;
@@ -459,10 +464,25 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   gap: 0.35rem;
   margin-bottom: 0.3rem;
 }
+.recipe-slot-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
 .recipe-slot-label {
   font-size: 0.75rem;
   font-weight: 800;
   color: var(--text);
+}
+.recipe-slot-done {
+  min-height: 1.5rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #1a1410;
+  font-size: 0.68rem;
+  font-weight: 800;
 }
 .recipe-slot-remove {
   width: 1.5rem;
@@ -485,6 +505,12 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   font-size: 0.7rem;
   font-weight: 600;
   color: var(--dim);
+}
+.recipe-row.slot-arm-target {
+  outline: 1px dashed rgba(212, 160, 80, 0.45);
+}
+.ing-grid.slot-arming .ing-tile {
+  box-shadow: 0 0 0 1px rgba(212, 160, 80, 0.28);
 }
 .slot-opt-chip {
   width: 2rem;
