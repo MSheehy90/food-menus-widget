@@ -955,7 +955,7 @@
     })[0];
   }
 
-  /** One locker tile per food object (shared art / same object key). Empty holes fold into a painted sibling when one exists. */
+  /** One locker tile per food object (shared art / cut-form object key). Empty-art rows stay solo placeholders. */
   function dedupeLockerByArt(ings) {
     const list = (ings || []).filter(Boolean);
     const parent = new Map();
@@ -979,14 +979,17 @@
     list.forEach((ing) => {
       const id = `ing:${ing.id}`;
       union(id, `title:${String(ing.name || '').trim().toLowerCase()}`);
-      union(id, `obj:${objectKeyFromLabel(ing.name)}`);
       const art = normalizeArtPath(ing.art);
-      if (art && !isArtDeleted(art)) union(id, `art:${art}`);
+      // Empty-art rows stay solo dashed placeholders; only painted rows join by art / object key.
+      if (art && !isArtDeleted(art)) {
+        union(id, `art:${art}`);
+        union(id, `obj:${objectKeyFromLabel(ing.name)}`);
+      }
       (ing.aliases || []).forEach((al) => {
         const a = String(al || '').trim();
         if (!a) return;
         union(id, `title:${a.toLowerCase()}`);
-        union(id, `obj:${objectKeyFromLabel(a)}`);
+        if (art && !isArtDeleted(art)) union(id, `obj:${objectKeyFromLabel(a)}`);
       });
     });
 
@@ -997,6 +1000,7 @@
       groups.get(root).push(ing);
     });
 
+    const faceMap = loadFaceArtMap();
     const out = [];
     const seen = new Set();
     list.forEach((ing) => {
@@ -1007,10 +1011,20 @@
       const withArt = group.filter((g) => artPathUsable(g.art));
       const withAnyArt = group.filter((g) => normalizeArtPath(g.art) && !isArtDeleted(g.art));
       const pool = withArt.length ? withArt : (withAnyArt.length ? withAnyArt : group);
-      const face = pool.slice().sort((a, b) => (
-        scoreFaceCandidate({ art: b.art, label: b.name, fromCatalog: true })
-        - scoreFaceCandidate({ art: a.art, label: a.name, fromCatalog: true })
-      ))[0];
+      const arts = pool.map((g) => normalizeArtPath(g.art)).filter(Boolean);
+      const objKey = objectKeyFromLabel(pickObjectTitle(group, [], arts[0]))
+        || objectKeyFromLabel(group[0]?.name);
+      const preferred = normalizeArtPath(faceMap[objKey]);
+      let face = null;
+      if (preferred) {
+        face = pool.find((g) => normalizeArtPath(g.art) === preferred && artPathUsable(g.art)) || null;
+      }
+      if (!face) {
+        face = pool.slice().sort((a, b) => (
+          scoreFaceCandidate({ art: b.art, label: b.name, fromCatalog: true })
+          - scoreFaceCandidate({ art: a.art, label: a.name, fromCatalog: true })
+        ))[0];
+      }
       out.push(face);
     });
     return out;
@@ -2213,16 +2227,14 @@
     state.artFiles = (state.artFiles || []).filter((p) => !isArtDeleted(p));
   }
 
-  /** Unassign path everywhere, denylist it, drop from inventory — no git-rm. */
+  /** Unassign path everywhere locally, denylist it, drop from inventory — no git-rm, no sheet dirty. */
   function permanentlyDeleteArt(artPath) {
     const path = normalizeArtPath(artPath);
     if (!path) return false;
 
+    // Client-only hide: clear in-memory catalog art without upserting dirty sheet rows.
     (state.catalog.ingredients || []).forEach((ing) => {
-      if (normalizeArtPath(ing.art) === path) {
-        ing.art = '';
-        persistIngredientArt(ing);
-      }
+      if (normalizeArtPath(ing.art) === path) ing.art = '';
     });
 
     state.artFiles = (state.artFiles || []).filter((p) => normalizeArtPath(p) !== path);
@@ -2251,8 +2263,8 @@
     (state.catalog.ingredients || []).forEach((ing) => {
       const art = normalizeArtPath(ing.art);
       if (!art || !isArtDeleted(art)) return;
+      // Local view only — do not mark ingredients/assets dirty for Drive push.
       ing.art = '';
-      persistIngredientArt(ing);
       changed = true;
     });
     purgeDeletedFromArtFiles();
@@ -2389,10 +2401,12 @@
       .replace(/\s+/g, ' ')
       .trim();
     if (!s) return '';
+    // Only strip cut/presentation forms (lemon ≈ lemon wedges). Keep product variants
+    // like strip / slices / flakes as distinct keys so their art paths stay separate tiles.
     const strip = new Set([
-      'wedges', 'wedge', 'slices', 'slice', 'halves', 'half',
+      'wedges', 'wedge', 'halves', 'half',
       'chopped', 'bunch', 'unit', 'whole', 'cracked', 'peeled',
-      'diced', 'minced', 'grated', 'flakes', 'flake', 'strips', 'strip',
+      'diced', 'minced', 'grated',
       'boiled', 'seasoned', 'dry', 'aged', 'dried', 'fresh', 'raw',
       'streusel', 'piece', 'pieces', 'cut', 'cuts'
     ]);
