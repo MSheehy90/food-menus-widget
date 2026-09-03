@@ -1726,7 +1726,7 @@
       <div class="gal-miss-row" data-ing-id="${esc(ing.id)}">
         <span class="gal-miss-name">${esc(ing.name)}</span>
         <label class="gal-miss-drop">
-          <input type="file" class="gal-miss-file" accept="image/*" capture="environment" hidden />
+          <input type="file" class="gal-miss-file" accept="image/*" hidden />
           <span class="gal-miss-drop-hint">Drop image or tap to pick</span>
         </label>
       </div>
