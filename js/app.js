@@ -1064,7 +1064,7 @@
       if (singleTimer) { clearTimeout(singleTimer); singleTimer = null; }
     };
     const blockedTarget = (target) => Boolean(
-      target?.closest?.('select, input, textarea, label.gal-miss-drop, a, menu button')
+      target?.closest?.('select, input, textarea, label.gal-miss-drop, a, menu button, .gal-flag-clear, .detail-flag')
     );
 
     el.addEventListener('contextmenu', (e) => {
@@ -1199,6 +1199,7 @@
         <button type="button" class="ing-tile ${sel.has(ing.id) ? 'selected' : ''} ${ingredientNeedsArt(ing) ? 'missing-art' : ''} ${isArtBroken(ing.art) ? 'broken-art' : ''} ${isMade(ing) ? 'is-made' : ''}"
           data-id="${esc(ing.id)}" aria-label="${esc(ing.name)}">
           ${isMade(ing) ? '<span class="chain-cue" title="Process chain" aria-hidden="true"></span>' : ''}
+          ${ingredientHasFlaggedArt(ing) ? '<span class="ing-flag-badge" title="Flagged" aria-label="Flagged">⚑</span>' : ''}
           ${artHtml(ing)}
         </button>
       `).join('')}
@@ -1264,6 +1265,41 @@
     )) || null;
   }
 
+  function showsDetailVariants(ing) {
+    const obj = resolveGalleryObject(ing);
+    const paintings = obj?.paintings || [];
+    const names = obj?.names || sharedArtNames(ing);
+    const holes = obj?.holes || [];
+    return paintings.length > 1 || names.length > 1 || holes.length > 0;
+  }
+
+  function detailFlagControlsHtml(artPath, { label = '', objectKey = '' } = {}) {
+    const path = normalizeArtPath(artPath);
+    if (!path || isArtDeleted(path)) return '';
+    const flag = getArtFlag(path);
+    const attrs = `data-art="${esc(path)}" data-object-key="${esc(objectKey || '')}" data-label="${esc(label || '')}"`;
+    const choices = `
+      <div class="detail-flag-choices" hidden>
+        <button type="button" class="detail-flag-reedit" data-kind="reedit" ${attrs}>Re-edit</button>
+        <button type="button" class="detail-flag-regen" data-kind="regen" ${attrs}>Regen</button>
+        <button type="button" class="detail-flag-cancel">Cancel</button>
+      </div>`;
+    if (flag) {
+      const kindLabel = flag.kind === 'regen' ? 'Regen' : 'Re-edit';
+      return `
+        <div class="detail-flag is-flagged" ${attrs}>
+          <button type="button" class="detail-flag-chip kind-${esc(flag.kind)}" ${attrs} aria-label="Change flag kind">${esc(kindLabel)}</button>
+          <button type="button" class="detail-flag-clear" ${attrs}>Clear</button>
+          ${choices}
+        </div>`;
+    }
+    return `
+      <div class="detail-flag" ${attrs}>
+        <button type="button" class="detail-flag-start" ${attrs}>Flag</button>
+        ${choices}
+      </div>`;
+  }
+
   function detailVariantsHtml(ing) {
     const obj = resolveGalleryObject(ing);
     const paintings = obj?.paintings || [];
@@ -1272,6 +1308,7 @@
     if (paintings.length <= 1 && names.length <= 1 && !holes.length) return '';
 
     const faceArt = normalizeArtPath(ing?.art || obj?.art);
+    const objectKey = obj?.objectKey || objectKeyFromLabel(ing?.name) || '';
     const paintRows = paintings.map((p) => {
       const isFace = normalizeArtPath(p.art) === faceArt;
       const status = !p.usable
@@ -1281,8 +1318,9 @@
         ? `<img class="art-fit" src="${esc(resolveArtSrc(p.art))}" alt="" draggable="false" data-art="${esc(p.art)}" />`
         : `<span class="name-fallback art-broken">?</span>`;
       const useBtn = p.usable
-        ? `<button type="button" class="detail-variant-use" data-art="${esc(p.art)}" data-object-key="${esc(obj?.objectKey || '')}">Use as grid picture</button>`
+        ? `<button type="button" class="detail-variant-use" data-art="${esc(p.art)}" data-object-key="${esc(objectKey)}">Use as grid picture</button>`
         : '';
+      const flagHtml = detailFlagControlsHtml(p.art, { label: p.label, objectKey });
       return `<div class="detail-variant-row" data-art="${esc(p.art)}">
         <div class="detail-variant-thumb">${thumb}</div>
         <div class="detail-variant-copy">
@@ -1290,11 +1328,12 @@
           <div class="detail-variant-meta">${esc(status)}</div>
           <div class="detail-variant-actions">
             ${useBtn}
-            <button type="button" class="detail-variant-delete" data-art="${esc(p.art)}" data-object-key="${esc(obj?.objectKey || '')}">Delete</button>
+            ${flagHtml}
+            <button type="button" class="detail-variant-delete" data-art="${esc(p.art)}" data-object-key="${esc(objectKey)}">Delete</button>
           </div>
           <div class="detail-variant-delete-confirm" hidden>
             <p class="detail-delete-warn">Permanently hide this picture only. Other variants stay.</p>
-            <button type="button" class="detail-variant-delete-confirm-btn" data-art="${esc(p.art)}" data-object-key="${esc(obj?.objectKey || '')}">Permanently delete</button>
+            <button type="button" class="detail-variant-delete-confirm-btn" data-art="${esc(p.art)}" data-object-key="${esc(objectKey)}">Permanently delete</button>
             <button type="button" class="detail-variant-delete-cancel-btn">Cancel</button>
           </div>
         </div>
@@ -1372,8 +1411,15 @@
   function detailDeleteHtml(ing) {
     const artPath = normalizeArtPath(ing?.art);
     if (!artPath || isArtDeleted(artPath)) return '';
+    const obj = resolveGalleryObject(ing);
+    const label = obj?.title || sharedArtNames(ing)[0] || ing?.name || '';
+    const objectKey = obj?.objectKey || objectKeyFromLabel(label) || '';
+    const flagHtml = showsDetailVariants(ing)
+      ? ''
+      : detailFlagControlsHtml(artPath, { label, objectKey });
     return `
       <div class="detail-delete">
+        ${flagHtml}
         <button type="button" class="detail-delete-start" id="detail-delete-start">Delete picture</button>
         <div class="detail-delete-confirm" id="detail-delete-confirm" hidden>
           <p class="detail-delete-warn">Permanently hide this picture on this device. Shared names become Missing. Close stays safe.</p>
@@ -1488,6 +1534,60 @@
         } else {
           $('#detail-dialog')?.close();
         }
+      });
+    });
+
+    const refreshDetailAfterFlag = () => {
+      const next = resolveGalleryObject({
+        ...ing,
+        name: displayName,
+        art: ing.art,
+        _galleryObject: null
+      });
+      openDetail(ingredientForGalleryItem(next) || ing, { forceChain });
+      renderGallery();
+      renderGrid();
+    };
+
+    $('#detail-body').querySelectorAll('.detail-flag').forEach((wrap) => {
+      const choices = wrap.querySelector('.detail-flag-choices');
+      const startBtn = wrap.querySelector('.detail-flag-start');
+      const chipBtn = wrap.querySelector('.detail-flag-chip');
+      const clearBtn = wrap.querySelector('.detail-flag-clear');
+      const showChoices = () => {
+        if (choices) choices.hidden = false;
+        if (startBtn) startBtn.hidden = true;
+        if (chipBtn) chipBtn.hidden = true;
+        if (clearBtn) clearBtn.hidden = true;
+      };
+      const hideChoices = () => {
+        if (choices) choices.hidden = true;
+        if (startBtn) startBtn.hidden = false;
+        if (chipBtn) chipBtn.hidden = false;
+        if (clearBtn) clearBtn.hidden = false;
+      };
+      startBtn?.addEventListener('click', showChoices);
+      chipBtn?.addEventListener('click', showChoices);
+      wrap.querySelector('.detail-flag-cancel')?.addEventListener('click', hideChoices);
+      wrap.querySelectorAll('.detail-flag-reedit, .detail-flag-regen').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const artPath = normalizeArtPath(btn.getAttribute('data-art') || wrap.getAttribute('data-art'));
+          const kind = btn.getAttribute('data-kind');
+          const label = btn.getAttribute('data-label') || wrap.getAttribute('data-label') || displayName;
+          const objectKey = btn.getAttribute('data-object-key')
+            || wrap.getAttribute('data-object-key')
+            || obj?.objectKey
+            || objectKeyFromLabel(displayName);
+          if (!artPath || !kind) return;
+          setArtFlag(artPath, kind, { label, objectKey });
+          refreshDetailAfterFlag();
+        });
+      });
+      clearBtn?.addEventListener('click', () => {
+        const artPath = normalizeArtPath(clearBtn.getAttribute('data-art') || wrap.getAttribute('data-art'));
+        if (!artPath) return;
+        clearArtFlag(artPath);
+        refreshDetailAfterFlag();
       });
     });
 
@@ -2088,6 +2188,7 @@
 
   const LOCAL_ART_KEY = 'food-menus-local-art-v1';
   const DELETED_ART_KEY = 'food-menus-deleted-art-v1';
+  const FLAGGED_ART_KEY = 'food-menus-flagged-art-v1';
 
   function loadLocalArtStore() {
     try {
@@ -2117,6 +2218,115 @@
   function isArtDeleted(path) {
     const p = normalizeArtPath(path);
     return Boolean(p && loadDeletedArtSet().has(p));
+  }
+
+  function loadFlaggedArtMap() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(FLAGGED_ART_KEY) || '{}') || {};
+      const out = {};
+      Object.entries(raw).forEach(([path, meta]) => {
+        const p = normalizeArtPath(path);
+        if (!p || !meta || typeof meta !== 'object') return;
+        const kind = meta.kind === 'regen' ? 'regen' : (meta.kind === 'reedit' ? 'reedit' : '');
+        if (!kind) return;
+        out[p] = {
+          kind,
+          at: String(meta.at || ''),
+          label: String(meta.label || ''),
+          objectKey: String(meta.objectKey || '')
+        };
+      });
+      return out;
+    } catch {
+      return {};
+    }
+  }
+
+  function saveFlaggedArtMap(map) {
+    localStorage.setItem(FLAGGED_ART_KEY, JSON.stringify(map || {}));
+  }
+
+  function getArtFlag(path) {
+    const p = normalizeArtPath(path);
+    if (!p || isArtDeleted(p)) return null;
+    return loadFlaggedArtMap()[p] || null;
+  }
+
+  function setArtFlag(path, kind, { label = '', objectKey = '' } = {}) {
+    const p = normalizeArtPath(path);
+    const k = kind === 'regen' ? 'regen' : (kind === 'reedit' ? 'reedit' : '');
+    if (!p || !k || isArtDeleted(p)) return false;
+    const map = loadFlaggedArtMap();
+    map[p] = {
+      kind: k,
+      at: new Date().toISOString(),
+      label: String(label || '').trim(),
+      objectKey: String(objectKey || '').trim()
+    };
+    saveFlaggedArtMap(map);
+    return true;
+  }
+
+  function clearArtFlag(path) {
+    const p = normalizeArtPath(path);
+    if (!p) return false;
+    const map = loadFlaggedArtMap();
+    if (!Object.prototype.hasOwnProperty.call(map, p)) return false;
+    delete map[p];
+    saveFlaggedArtMap(map);
+    return true;
+  }
+
+  function flaggedArtCount() {
+    const map = loadFlaggedArtMap();
+    return Object.keys(map).filter((p) => p && !isArtDeleted(p)).length;
+  }
+
+  function flaggedArtEntries() {
+    const map = loadFlaggedArtMap();
+    return Object.entries(map)
+      .map(([path, meta]) => ({
+        art: path,
+        kind: meta.kind === 'regen' ? 'regen' : 'reedit',
+        at: meta.at || '',
+        label: meta.label || humanizeArtStem(artStem(path)) || path,
+        objectKey: meta.objectKey || ''
+      }))
+      .filter((e) => e.art && !isArtDeleted(e.art))
+      .sort((a, b) => {
+        const ka = a.kind === 'regen' ? 0 : 1;
+        const kb = b.kind === 'regen' ? 0 : 1;
+        if (ka !== kb) return ka - kb;
+        return String(a.label).localeCompare(String(b.label));
+      });
+  }
+
+  function objectHasFlaggedArt(it) {
+    const map = loadFlaggedArtMap();
+    if (!Object.keys(map).length) return false;
+    const paintings = it?.paintings || [];
+    if (paintings.length) {
+      return paintings.some((p) => {
+        const path = normalizeArtPath(p.art);
+        return Boolean(path && map[path] && !isArtDeleted(path));
+      });
+    }
+    const art = normalizeArtPath(it?.art);
+    if (art && map[art] && !isArtDeleted(art)) return true;
+    const key = String(it?.objectKey || '').trim();
+    if (!key) return false;
+    return Object.values(map).some((m) => m && m.objectKey === key);
+  }
+
+  /** Cheap locker badge: face path or any flag sharing this object key. */
+  function ingredientHasFlaggedArt(ing) {
+    const map = loadFlaggedArtMap();
+    if (!Object.keys(map).length) return false;
+    const art = normalizeArtPath(ing?.art);
+    if (art && map[art] && !isArtDeleted(art)) return true;
+    const key = objectKeyFromLabel(ing?.name);
+    if (!key) return false;
+    return Object.values(map).some((m) => m && m.objectKey === key);
   }
 
   /** Resolve local-art/* keys (and data:/blob: URLs) for <img src>. */
@@ -2286,6 +2496,8 @@
     const deleted = loadDeletedArtSet();
     deleted.add(path);
     saveDeletedArtSet(deleted);
+
+    clearArtFlag(path);
 
     const local = loadLocalArtStore();
     if (Object.prototype.hasOwnProperty.call(local, path)) {
@@ -2889,12 +3101,18 @@
   }
 
   function renderGallery() {
+    const flagCount = flaggedArtCount();
+    const flagTab = $('#gal-flagged');
+    if (flagTab) flagTab.textContent = flagCount > 0 ? `Flagged (${flagCount})` : 'Flagged';
+
     $('#gal-have')?.classList.toggle('active', state.galleryMode === 'have');
     $('#gal-untitled')?.classList.toggle('active', state.galleryMode === 'untitled');
     $('#gal-miss')?.classList.toggle('active', state.galleryMode === 'miss');
+    $('#gal-flagged')?.classList.toggle('active', state.galleryMode === 'flag');
     const grid = $('#gallery-grid');
     grid.classList.toggle('gallery-miss', state.galleryMode === 'miss');
     grid.classList.toggle('gallery-untitled', state.galleryMode === 'untitled');
+    grid.classList.toggle('gallery-flagged', state.galleryMode === 'flag');
 
     if (state.galleryMode === 'have') {
       const items = paintedGalleryItems().filter((it) =>
@@ -2916,6 +3134,7 @@
         ${showHeads ? sectionHeadHtml(key) : ''}
         ${list.map((it) => `
           <div class="gal-tile ${isArtBroken(it.art) ? 'broken-art' : ''}" data-gal-id="${esc(it.id)}" title="${esc(it.title)}">
+            ${objectHasFlaggedArt(it) ? '<span class="gal-flag-badge" title="Flagged" aria-label="Flagged">⚑</span>' : ''}
             <div class="gal-thumb">
               ${isArtBroken(it.art)
                 ? `<span class="name-fallback art-broken">?</span>`
@@ -2964,6 +3183,75 @@
           uiType: 'Untitled',
           uiFamily: 'Extras',
           names: [artStem(path).toLowerCase()]
+        });
+      });
+      enhanceArtImages(grid);
+      return;
+    }
+
+    if (state.galleryMode === 'flag') {
+      const entries = flaggedArtEntries().filter((e) =>
+        galleryQueryMatch(e.label) ||
+        galleryQueryMatch(e.kind) ||
+        galleryQueryMatch(artStem(e.art)) ||
+        galleryQueryMatch(e.objectKey)
+      );
+      if (!entries.length) {
+        grid.innerHTML = `<p class="muted" style="grid-column:1/-1;text-align:center">None flagged</p>`;
+        return;
+      }
+      const regen = entries.filter((e) => e.kind === 'regen');
+      const reedit = entries.filter((e) => e.kind === 'reedit');
+      const block = (list, head) => {
+        if (!list.length) return '';
+        return `
+          ${sectionHeadHtml(head)}
+          ${list.map((e) => {
+            const kindLabel = e.kind === 'regen' ? 'Regen' : 'Re-edit';
+            return `
+            <div class="gal-flag-row" data-art="${esc(e.art)}" data-object-key="${esc(e.objectKey)}" data-label="${esc(e.label)}">
+              <div class="gal-flag-thumb">
+                ${isArtBroken(e.art)
+                  ? `<span class="name-fallback art-broken">?</span>`
+                  : `<img class="art-fit" src="${esc(resolveArtSrc(e.art))}" alt="" loading="lazy" decoding="async" draggable="false" data-art="${esc(e.art)}" />`}
+              </div>
+              <div class="gal-flag-copy">
+                <span class="gal-flag-label">${esc(e.label)}</span>
+                <span class="detail-flag-chip kind-${esc(e.kind)}">${esc(kindLabel)}</span>
+              </div>
+              <button type="button" class="gal-flag-clear" data-art="${esc(e.art)}">Clear</button>
+            </div>`;
+          }).join('')}
+        `;
+      };
+      grid.innerHTML = `${block(regen, 'Regen')}${block(reedit, 'Re-edit')}`;
+      const painted = paintedGalleryItems();
+      grid.querySelectorAll('.gal-flag-row').forEach((row) => {
+        const art = normalizeArtPath(row.getAttribute('data-art'));
+        const objectKey = row.getAttribute('data-object-key') || '';
+        const label = row.getAttribute('data-label') || '';
+        const it = painted.find((obj) =>
+          obj.objectKey === objectKey
+          || (obj.paintings || []).some((p) => normalizeArtPath(p.art) === art)
+          || normalizeArtPath(obj.art) === art
+        ) || {
+          kind: 'named-file',
+          id: `flag:${art}`,
+          title: label || humanizeArtStem(artStem(art)),
+          art,
+          objectKey,
+          uiType: 'Other',
+          uiFamily: 'Extras',
+          names: [label].filter(Boolean),
+          paintings: [{ art, label: label || humanizeArtStem(artStem(art)), usable: artPathUsable(art), broken: isArtBroken(art) }]
+        };
+        bindGalleryDetailTile(row, it);
+        row.querySelector('.gal-flag-clear')?.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          clearArtFlag(art);
+          renderGallery();
+          renderGrid();
         });
       });
       enhanceArtImages(grid);
@@ -3461,6 +3749,10 @@
     });
     $('#gal-miss').addEventListener('click', () => {
       state.galleryMode = 'miss';
+      ensureArtFiles().then(() => renderGallery());
+    });
+    $('#gal-flagged')?.addEventListener('click', () => {
+      state.galleryMode = 'flag';
       ensureArtFiles().then(() => renderGallery());
     });
     $('#gallery-search')?.addEventListener('input', (e) => {

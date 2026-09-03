@@ -910,7 +910,9 @@ button.slot-opt-chip {
 /* —— gallery —— */
 .gallery-tabs {
   display: flex; gap: 0.4rem; padding: 0.5rem 0.85rem;
+  overflow-x: auto; scrollbar-width: none;
 }
+.gallery-tabs::-webkit-scrollbar { display: none; }
 .gallery-search-wrap {
   display: block;
   margin: 0 0.85rem 0.45rem;
@@ -1366,6 +1368,173 @@ dialog::backdrop { background: rgba(10,8,6,0.75); }
   border: 1px solid var(--line);
   background: #1a1410;
   color: var(--ink);
+}
+
+.detail-flag {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: center;
+}
+.detail-delete > .detail-flag {
+  margin-bottom: 0.15rem;
+}
+.detail-flag-start,
+.detail-flag-clear,
+.detail-flag-reedit,
+.detail-flag-regen,
+.detail-flag-cancel,
+.gal-flag-clear {
+  font-family: inherit;
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 0.22rem 0.4rem;
+  border-radius: 8px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.detail-delete > .detail-flag .detail-flag-start,
+.detail-delete > .detail-flag .detail-flag-clear,
+.detail-delete > .detail-flag .detail-flag-reedit,
+.detail-delete > .detail-flag .detail-flag-regen,
+.detail-delete > .detail-flag .detail-flag-cancel {
+  font-size: 0.78rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 10px;
+}
+.detail-flag-start {
+  border: 1px solid rgba(212, 165, 116, 0.55);
+  background: rgba(212, 165, 116, 0.1);
+  color: var(--accent-strong);
+}
+.detail-flag-clear,
+.gal-flag-clear {
+  border: 1px solid var(--line);
+  background: #1a1410;
+  color: var(--ink);
+}
+.detail-flag-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  width: 100%;
+  align-items: center;
+}
+.detail-flag-choices[hidden] { display: none !important; }
+.detail-flag-reedit {
+  border: 1px solid rgba(212, 160, 80, 0.7);
+  background: rgba(120, 80, 20, 0.45);
+  color: #f0d4a0;
+}
+.detail-flag-regen {
+  border: 1px solid rgba(200, 100, 120, 0.7);
+  background: rgba(90, 30, 45, 0.5);
+  color: #f0c0cc;
+}
+.detail-flag-cancel {
+  border: 1px solid var(--line);
+  background: #1a1410;
+  color: var(--ink);
+}
+.detail-flag-chip,
+button.detail-flag-chip {
+  font-family: inherit;
+  font-size: 0.58rem;
+  font-weight: 800;
+  padding: 0.18rem 0.4rem;
+  border-radius: 999px;
+  line-height: 1.2;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+.detail-flag-chip.kind-reedit,
+button.detail-flag-chip.kind-reedit {
+  border: 1px solid rgba(212, 160, 80, 0.55);
+  background: rgba(120, 80, 20, 0.4);
+  color: #f0d4a0;
+}
+.detail-flag-chip.kind-regen,
+button.detail-flag-chip.kind-regen {
+  border: 1px solid rgba(200, 100, 120, 0.55);
+  background: rgba(90, 30, 45, 0.45);
+  color: #f0c0cc;
+}
+span.detail-flag-chip {
+  cursor: default;
+  display: inline-block;
+}
+
+.gal-flag-badge,
+.ing-flag-badge {
+  position: absolute;
+  top: 0.28rem;
+  left: 0.28rem;
+  z-index: 2;
+  font-size: 0.72rem;
+  line-height: 1;
+  color: #f0c27a;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+  pointer-events: none;
+}
+.ing-flag-badge {
+  /* keep clear of chain-cue on the right */
+  left: 0.28rem;
+  right: auto;
+  top: 0.28rem;
+}
+
+.gallery-grid.gallery-flagged {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  grid-template-columns: none;
+}
+.gal-flag-row {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.4rem 0.45rem;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #1a1410;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.gal-flag-thumb {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 8px;
+  background: #241c17;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.gal-flag-thumb img {
+  width: 85%;
+  height: 85%;
+  object-fit: contain;
+  pointer-events: none;
+}
+.gal-flag-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.gal-flag-label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--ink);
+  line-height: 1.2;
+  word-break: break-word;
+}
+.gal-flag-clear {
+  font-size: 0.7rem;
+  padding: 0.4rem 0.55rem;
+  min-height: 2.2rem;
 }
 
 .stars-breakdown { display: flex; flex-direction: column; gap: 0.45rem; }
