@@ -2042,9 +2042,11 @@
       const sheetKept = Sync().keptFromStore(result.store).map((d) => ({
         ...d,
         ingredients: hydrateIngredients(d.ingredients),
+        slots: normalizeRecipeSlots(d.slots),
         variations: (d.variations || []).map((v) => ({
           ...v,
-          ingredients: hydrateIngredients(v.ingredients)
+          ingredients: hydrateIngredients(v.ingredients),
+          slots: normalizeRecipeSlots(v.slots || d.slots)
         }))
       }));
       const byId = new Map(state.kept.map((d) => [d.id, d]));
