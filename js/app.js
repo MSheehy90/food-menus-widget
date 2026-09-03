@@ -1271,8 +1271,12 @@
     const holes = obj?.holes || [];
     if (paintings.length <= 1 && names.length <= 1 && !holes.length) return '';
 
+    const faceArt = normalizeArtPath(ing?.art || obj?.art);
     const paintRows = paintings.map((p) => {
-      const status = !p.usable ? (p.broken ? 'broken' : 'unavailable') : (normalizeArtPath(p.art) === normalizeArtPath(ing?.art || obj?.art) ? 'grid face' : 'alt');
+      const isFace = normalizeArtPath(p.art) === faceArt;
+      const status = !p.usable
+        ? (p.broken ? 'broken' : 'unavailable')
+        : (isFace ? 'grid face' : 'alt');
       const thumb = p.usable
         ? `<img class="art-fit" src="${esc(resolveArtSrc(p.art))}" alt="" draggable="false" data-art="${esc(p.art)}" />`
         : `<span class="name-fallback art-broken">?</span>`;
@@ -1284,7 +1288,15 @@
         <div class="detail-variant-copy">
           <div class="detail-variant-name">${esc(p.label)}</div>
           <div class="detail-variant-meta">${esc(status)}</div>
-          ${useBtn}
+          <div class="detail-variant-actions">
+            ${useBtn}
+            <button type="button" class="detail-variant-delete" data-art="${esc(p.art)}" data-object-key="${esc(obj?.objectKey || '')}">Delete</button>
+          </div>
+          <div class="detail-variant-delete-confirm" hidden>
+            <p class="detail-delete-warn">Permanently hide this picture only. Other variants stay.</p>
+            <button type="button" class="detail-variant-delete-confirm-btn" data-art="${esc(p.art)}" data-object-key="${esc(obj?.objectKey || '')}">Permanently delete</button>
+            <button type="button" class="detail-variant-delete-cancel-btn">Cancel</button>
+          </div>
         </div>
       </div>`;
     }).join('');
@@ -1446,6 +1458,39 @@
       });
     });
 
+    $('#detail-body').querySelectorAll('.detail-variant-row').forEach((row) => {
+      const delBtn = row.querySelector('.detail-variant-delete');
+      const confirmWrap = row.querySelector('.detail-variant-delete-confirm');
+      const confirmBtn = row.querySelector('.detail-variant-delete-confirm-btn');
+      const cancelBtn = row.querySelector('.detail-variant-delete-cancel-btn');
+      const actions = row.querySelector('.detail-variant-actions');
+      delBtn?.addEventListener('click', () => {
+        if (confirmWrap) confirmWrap.hidden = false;
+        if (actions) actions.hidden = true;
+      });
+      cancelBtn?.addEventListener('click', () => {
+        if (confirmWrap) confirmWrap.hidden = true;
+        if (actions) actions.hidden = false;
+      });
+      confirmBtn?.addEventListener('click', () => {
+        const artPath = normalizeArtPath(confirmBtn.getAttribute('data-art'));
+        const objectKey = confirmBtn.getAttribute('data-object-key') || obj?.objectKey || objectKeyFromLabel(displayName);
+        if (!artPath) return;
+        permanentlyDeleteArt(artPath, { objectKey });
+        const next = resolveGalleryObject({
+          name: displayName,
+          art: '',
+          _galleryObject: null,
+          id: ing?.id
+        });
+        if (next?.paintings?.length) {
+          openDetail(ingredientForGalleryItem(next), { forceChain });
+        } else {
+          $('#detail-dialog')?.close();
+        }
+      });
+    });
+
     const deleteStart = $('#detail-delete-start');
     const deleteConfirmWrap = $('#detail-delete-confirm');
     const deleteConfirmBtn = $('#detail-delete-confirm-btn');
@@ -1460,9 +1505,20 @@
     });
     deleteConfirmBtn?.addEventListener('click', () => {
       const artPath = normalizeArtPath(ing.art);
+      const objectKey = obj?.objectKey || objectKeyFromLabel(displayName);
       if (!artPath) return;
-      permanentlyDeleteArt(artPath);
-      $('#detail-dialog')?.close();
+      permanentlyDeleteArt(artPath, { objectKey });
+      const next = resolveGalleryObject({
+        name: displayName,
+        art: '',
+        _galleryObject: null,
+        id: ing?.id
+      });
+      if (next?.paintings?.length) {
+        openDetail(ingredientForGalleryItem(next), { forceChain });
+      } else {
+        $('#detail-dialog')?.close();
+      }
     });
 
     enhanceArtImages($('#detail-body'));
@@ -2214,7 +2270,7 @@
   }
 
   /** Unassign path everywhere, denylist it, drop from inventory — no git-rm. */
-  function permanentlyDeleteArt(artPath) {
+  function permanentlyDeleteArt(artPath, { objectKey = '' } = {}) {
     const path = normalizeArtPath(artPath);
     if (!path) return false;
 
@@ -2238,10 +2294,32 @@
     }
 
     state.brokenArt.delete(path);
+
+    // Drop face prefs that pointed at the deleted painting; pick another if this object remains.
+    const faceMap = loadFaceArtMap();
+    let faceDirty = false;
+    Object.keys(faceMap).forEach((k) => {
+      if (normalizeArtPath(faceMap[k]) === path) {
+        delete faceMap[k];
+        faceDirty = true;
+      }
+    });
+    if (faceDirty) saveFaceArtMap(faceMap);
+
     rebuildIndexes();
     renderGrid();
     renderTray();
     renderGallery();
+
+    const key = String(objectKey || '').trim();
+    if (key) {
+      const obj = paintedGalleryItems().find((it) => it.objectKey === key);
+      if (obj?.art && artPathUsable(obj.art)) {
+        setFaceArtForObject(key, obj.art);
+        renderGallery();
+        renderGrid();
+      }
+    }
     return true;
   }
 

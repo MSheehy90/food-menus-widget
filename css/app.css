@@ -1267,6 +1267,58 @@ dialog::backdrop { background: rgba(10,8,6,0.75); }
   cursor: pointer;
   touch-action: manipulation;
 }
+.detail-variant-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.25rem;
+  align-items: center;
+}
+.detail-variant-actions[hidden] { display: none !important; }
+.detail-variant-actions .detail-variant-use { margin-top: 0; }
+.detail-variant-delete {
+  font-family: inherit;
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 0.22rem 0.4rem;
+  border-radius: 8px;
+  border: 1px solid rgba(220, 90, 90, 0.55);
+  background: rgba(80, 28, 28, 0.45);
+  color: #f0b4b4;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.detail-variant-delete-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 0.3rem;
+}
+.detail-variant-delete-confirm[hidden] { display: none !important; }
+.detail-variant-delete-confirm-btn {
+  font-family: inherit;
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 0.28rem 0.45rem;
+  border-radius: 8px;
+  border: 1px solid rgba(220, 90, 90, 0.85);
+  background: #6b1f1f;
+  color: #ffe4e4;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.detail-variant-delete-cancel-btn {
+  font-family: inherit;
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 0.28rem 0.45rem;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #1a1410;
+  color: var(--ink);
+  cursor: pointer;
+  touch-action: manipulation;
+}
 .detail-delete {
   margin-top: 0.85rem;
   padding-top: 0.7rem;
