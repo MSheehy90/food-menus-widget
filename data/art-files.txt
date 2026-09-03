@@ -256,3 +256,16 @@ assets/ingredients/extra/1_supply_rolled_roast.png
 assets/ingredients/extra/1_supply_strip_steak.png
 assets/ingredients/extra/1_supply_tbone.png
 assets/ingredients/extra/1_supply_tomahawk.png
+assets/dishes/5star/tiles/hq-74.png
+assets/dishes/5star/tiles/hq-75.png
+assets/dishes/5star/tiles/hq-76.png
+assets/dishes/5star/tiles/hq-77.png
+assets/dishes/5star/tiles/hq-78.png
+assets/dishes/5star/tiles/hq-79.png
+assets/dishes/5star/tiles/hq-80.png
+assets/dishes/5star/tiles/hq-81.png
+assets/dishes/5star/tiles/hq-82.png
+assets/dishes/5star/tiles/hq-83.png
+assets/dishes/5star/tiles/hq-84.png
+assets/dishes/5star/tiles/hq-85.png
+assets/dishes/5star/tiles/hq-86.png
