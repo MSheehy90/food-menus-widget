@@ -629,6 +629,54 @@
     return true;
   }
 
+  /**
+   * Among ingredients sharing one art file, pick the locker tile identity.
+   * Prefer a name that matches the filename stem (Tomatoes ← 1_supply_tomatoes);
+   * otherwise the shortest name. Catalog rows are left intact.
+   */
+  function pickCanonicalLockerIngredient(ings, artPath) {
+    const list = (ings || []).filter(Boolean);
+    if (list.length <= 1) return list[0] || null;
+    const stemTitle = humanizeArtStem(artStem(artPath)).toLowerCase();
+    const byStem = list.filter((ing) => String(ing.name || '').trim().toLowerCase() === stemTitle);
+    const pool = byStem.length ? byStem : list;
+    return pool.slice().sort((a, b) => {
+      const dn = String(a.name || '').length - String(b.name || '').length;
+      if (dn) return dn;
+      return String(a.name || '').localeCompare(String(b.name || ''));
+    })[0];
+  }
+
+  /** One locker tile per unique art path; empty-art ingredients stay individual placeholders. */
+  function dedupeLockerByArt(ings) {
+    const list = ings || [];
+    const byArt = new Map();
+    list.forEach((ing) => {
+      const art = normalizeArtPath(ing?.art);
+      if (!art) return;
+      let group = byArt.get(art);
+      if (!group) {
+        group = [];
+        byArt.set(art, group);
+      }
+      group.push(ing);
+    });
+
+    const out = [];
+    const seenArt = new Set();
+    list.forEach((ing) => {
+      const art = normalizeArtPath(ing?.art);
+      if (!art) {
+        out.push(ing);
+        return;
+      }
+      if (seenArt.has(art)) return;
+      seenArt.add(art);
+      out.push(pickCanonicalLockerIngredient(byArt.get(art), art));
+    });
+    return out;
+  }
+
   function familyIngredients() {
     const q = (state.lockerSearch || '').trim().toLowerCase();
     const seen = new Set();
@@ -643,8 +691,10 @@
 
     // Search spans the whole locker so “ramen” finds noodles from any type chip.
     if (q) {
-      return state.catalog.ingredients.filter(take)
-        .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+      return dedupeLockerByArt(
+        state.catalog.ingredients.filter(take)
+          .sort((a, b) => String(a.name).localeCompare(String(b.name)))
+      );
     }
 
     const hier = state.catalog.hierarchy[state.type] || {};
@@ -654,7 +704,7 @@
     } else {
       ids = hier[state.family] || [];
     }
-    return ids.map((id) => state.byId.get(id)).filter(take);
+    return dedupeLockerByArt(ids.map((id) => state.byId.get(id)).filter(take));
   }
 
   function bindTileGestures(btn, ing) {
