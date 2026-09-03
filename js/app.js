@@ -173,8 +173,9 @@
       return `<span class="station-glyph ${glyph}" aria-hidden="true"></span>`;
     }
     if (ing?.art) {
+      const src = resolveArtSrc(ing.art);
       const sizeCls = `art-fit art-${artSizeClass(ing.art)}`;
-      return `<img class="${esc((cls ? `${cls} ` : '') + sizeCls)}" src="${esc(ing.art)}" alt="" draggable="false" loading="lazy" decoding="async" data-art="${esc(ing.art)}" />`;
+      return `<img class="${esc((cls ? `${cls} ` : '') + sizeCls)}" src="${esc(src)}" alt="" draggable="false" loading="lazy" decoding="async" data-art="${esc(ing.art)}" />`;
     }
     return `<span class="name-fallback">${esc(ing?.name || '?')}</span>`;
   }
@@ -1229,15 +1230,12 @@
 
   function artStem(path) {
     const base = String(path || '').split('/').pop() || '';
-    return base.replace(/\.png$/i, '');
+    return base.replace(/\.(png|jpe?g|webp|gif)$/i, '');
   }
 
-  /** Generic HQ tile ids (hq-01…hq-73) are codes, not dish names. */
+  /** Generic HQ tile ids (hq-01, hq-74, hq-86, any hq-N) are codes, not dish names. */
   function isGenericHqStem(stem) {
-    const m = String(stem || '').toLowerCase().match(/^hq-(\d+)$/);
-    if (!m) return false;
-    const n = Number(m[1]);
-    return n >= 1 && n <= 73;
+    return /^hq-\d+$/i.test(String(stem || '').trim());
   }
 
   /**
@@ -1267,6 +1265,29 @@
       .trim()
       .replace(/\\/g, '/')
       .replace(/^\.\//, '');
+  }
+
+  const LOCAL_ART_KEY = 'food-menus-local-art-v1';
+
+  function loadLocalArtStore() {
+    try {
+      return JSON.parse(localStorage.getItem(LOCAL_ART_KEY) || '{}') || {};
+    } catch {
+      return {};
+    }
+  }
+
+  function saveLocalArtStore(map) {
+    localStorage.setItem(LOCAL_ART_KEY, JSON.stringify(map || {}));
+  }
+
+  /** Resolve local-art/* keys (and data:/blob: URLs) for <img src>. */
+  function resolveArtSrc(path) {
+    const p = normalizeArtPath(path);
+    if (!p) return '';
+    if (/^(data:|blob:)/i.test(p)) return p;
+    const local = loadLocalArtStore()[p];
+    return local || p;
   }
 
   function normalizeArtKey(s) {
@@ -1320,25 +1341,22 @@
     return out;
   }
 
-  /** Unused paintings waiting on names: HQ tiles, leftover 5★ produce, rice stalk, extras. */
+  /** Untitled tab: unused generic hq-N codes only (not extras / produce / named files). */
   function isUntitledPoolPath(path) {
-    const p = normalizeArtPath(path);
-    if (!p) return false;
-    if (p.includes('/ingredients/extra/') || p.includes('/dishes/extra/')) return true;
-    if (p.includes('rice_stalk_bundle')) return true;
-    if (/\/ingredients\/5star\//.test(p)) return true;
-    const hq = p.match(/\/hq-(\d+)\.png$/i);
-    if (hq) {
-      const n = Number(hq[1]);
-      return n >= 1 && n <= 73;
-    }
-    return false;
+    return isGenericHqStem(artStem(path));
   }
 
   function untitledArtFiles() {
     return unusedArtFiles()
       .filter(isUntitledPoolPath)
       .sort((a, b) => artStem(a).localeCompare(artStem(b)));
+  }
+
+  /** Unused files with a readable name — belong on Painted, not Untitled. */
+  function namedUnusedArtFiles() {
+    return unusedArtFiles()
+      .filter((path) => !isGenericHqStem(artStem(path)))
+      .sort((a, b) => humanizeArtStem(artStem(a)).localeCompare(humanizeArtStem(artStem(b))));
   }
 
   function slugIngredientId(name) {
@@ -1372,7 +1390,10 @@
   }
 
   async function ensureArtFiles() {
-    if (state.artFiles.length) return state.artFiles;
+    if (state.artFiles.length) {
+      mergeLocalArtIntoInventory();
+      return state.artFiles;
+    }
     try {
       const res = await fetch('data/art-files.txt');
       if (res.ok) {
@@ -1382,7 +1403,54 @@
           .filter((l) => l && !l.startsWith('#'));
       }
     } catch { /* inventory optional */ }
+    mergeLocalArtIntoInventory();
     return state.artFiles;
+  }
+
+  function mergeLocalArtIntoInventory() {
+    const local = loadLocalArtStore();
+    Object.keys(local).forEach((path) => {
+      const p = normalizeArtPath(path);
+      if (p && !state.artFiles.includes(p)) state.artFiles.push(p);
+    });
+  }
+
+  function readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(reader.error || new Error('read failed'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  /** Missing-tab: drop/pick an image file → local art for that catalog ingredient. */
+  async function assignPickedImageToIngredient(ingId, file) {
+    if (!ingId || !file || !String(file.type || '').startsWith('image/')) return;
+    const objectUrl = URL.createObjectURL(file);
+    let dataUrl = '';
+    try {
+      dataUrl = await readFileAsDataUrl(file);
+    } catch {
+      dataUrl = '';
+    }
+    const safe = String(file.name || 'upload')
+      .replace(/\.[^.]+$/, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'upload';
+    const path = `local-art/${safe}-${Date.now()}.png`;
+    const store = loadLocalArtStore();
+    store[path] = dataUrl || objectUrl;
+    try {
+      saveLocalArtStore(store);
+    } catch {
+      // Quota: keep object URL for this session only
+      store[path] = objectUrl;
+      try { saveLocalArtStore({ ...loadLocalArtStore(), [path]: objectUrl }); } catch { /* ignore */ }
+    }
+    if (!state.artFiles.includes(path)) state.artFiles.push(path);
+    assignArtToIngredient(ingId, path);
   }
 
   function persistIngredientArt(ing) {
@@ -1507,6 +1575,22 @@
       });
     });
 
+    // Named unused pool files (Apple pie slice, Bacon, Avocado, …) live on Painted
+    namedUnusedArtFiles().forEach((path) => {
+      if (byPath.has(path)) return;
+      const stem = artStem(path);
+      const title = humanizeArtStem(stem);
+      items.push({
+        kind: 'named-file',
+        id: `file:${path}`,
+        title,
+        art: path,
+        uiType: inferUiTypeFromStem(stem),
+        untitled: false,
+        names: [title]
+      });
+    });
+
     items.sort((a, b) => {
       const d = galleryTypeRank(a.uiType) - galleryTypeRank(b.uiType);
       if (d) return d;
@@ -1544,6 +1628,40 @@
     input?.addEventListener('change', commitNew);
   }
 
+  function bindMissingDropRow(row) {
+    const ingId = row.getAttribute('data-ing-id');
+    const zone = row.querySelector('.gal-miss-drop');
+    const input = row.querySelector('input.gal-miss-file');
+    if (!ingId || !zone || !input) return;
+
+    const takeFile = (file) => {
+      if (!file) return;
+      assignPickedImageToIngredient(ingId, file);
+    };
+
+    zone.addEventListener('dragenter', (e) => {
+      e.preventDefault();
+      zone.classList.add('dragover');
+    });
+    zone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      zone.classList.add('dragover');
+    });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      zone.classList.remove('dragover');
+      const file = e.dataTransfer?.files?.[0];
+      takeFile(file);
+    });
+    input.addEventListener('change', () => {
+      const file = input.files?.[0];
+      takeFile(file);
+      input.value = '';
+    });
+  }
+
   function renderGallery() {
     $('#gal-have')?.classList.toggle('active', state.galleryMode === 'have');
     $('#gal-untitled')?.classList.toggle('active', state.galleryMode === 'untitled');
@@ -1556,13 +1674,14 @@
       const items = paintedGalleryItems().filter((it) =>
         galleryQueryMatch(it.title) ||
         galleryQueryMatch(artStem(it.art)) ||
+        galleryQueryMatch(humanizeArtStem(artStem(it.art))) ||
         galleryQueryMatch(it.uiType) ||
         (it.names || []).some((n) => galleryQueryMatch(n))
       );
       grid.innerHTML = items.map((it) => `
         <div class="gal-tile" title="${esc(it.title)}">
           <div class="gal-thumb">
-            <img class="art-fit art-${artSizeClass(it.art)}" src="${esc(it.art)}" alt="" loading="lazy" decoding="async" draggable="false" data-art="${esc(it.art)}" />
+            <img class="art-fit art-${artSizeClass(it.art)}" src="${esc(resolveArtSrc(it.art))}" alt="" loading="lazy" decoding="async" draggable="false" data-art="${esc(it.art)}" />
           </div>
           <span class="gal-title">${esc(it.title)}</span>
         </div>
@@ -1574,29 +1693,20 @@
     if (state.galleryMode === 'untitled') {
       const files = untitledArtFiles().filter((path) => {
         const stem = artStem(path);
-        const title = humanizeArtStem(stem);
-        return galleryQueryMatch(stem) ||
-          galleryQueryMatch(title) ||
-          galleryQueryMatch(path);
+        return galleryQueryMatch(stem) || galleryQueryMatch(path);
       });
       const nameOptions = catalogNameOptionsHtml();
       grid.innerHTML = files.map((path) => {
-        const stem = artStem(path);
-        const generic = isGenericHqStem(stem);
-        const title = humanizeArtStem(stem);
-        const tileClass = generic ? 'gal-tile untitled generic-id' : 'gal-tile untitled named-stem';
-        const cue = generic
-          ? `<span class="gal-untitled-tag">untitled</span>`
-          : '';
+        const stem = artStem(path).toLowerCase();
         return `
-        <div class="${tileClass}" data-art="${esc(path)}" title="${esc(title)}">
+        <div class="gal-tile untitled generic-id" data-art="${esc(path)}" title="${esc(stem)}">
           <div class="gal-thumb">
-            <img class="art-fit art-${artSizeClass(path)}" src="${esc(path)}" alt="" loading="lazy" decoding="async" draggable="false" data-art="${esc(path)}" />
+            <img class="art-fit art-${artSizeClass(path)}" src="${esc(resolveArtSrc(path))}" alt="" loading="lazy" decoding="async" draggable="false" data-art="${esc(path)}" />
           </div>
-          ${cue}
-          <span class="gal-title">${esc(title)}</span>
-          <select class="gal-name-select" aria-label="Name ${esc(title)}">${nameOptions}</select>
-          <input type="text" class="gal-new-name" placeholder="new name…" aria-label="New name for ${esc(title)}" autocomplete="off" />
+          <span class="gal-untitled-tag">untitled</span>
+          <span class="gal-title">${esc(stem)}</span>
+          <select class="gal-name-select" aria-label="Name ${esc(stem)}">${nameOptions}</select>
+          <input type="text" class="gal-new-name" placeholder="new name…" aria-label="New name for ${esc(stem)}" autocomplete="off" />
         </div>`;
       }).join('') || `<p class="muted" style="grid-column:1/-1;text-align:center">None</p>`;
       grid.querySelectorAll('.gal-tile.untitled').forEach(bindUntitledTile);
@@ -1604,7 +1714,6 @@
       return;
     }
 
-    const unused = unusedArtFiles().sort((a, b) => artStem(a).localeCompare(artStem(b)));
     const missing = (state.catalog.ingredients || [])
       .filter((ing) => !ing.art)
       .filter((ing) => galleryQueryMatch(ing.name) || galleryQueryMatch(ing.uiType || ing.group))
@@ -1613,26 +1722,17 @@
         return d || String(a.name).localeCompare(String(b.name));
       });
 
-    const options = [`<option value="">assign</option>`]
-      .concat(unused.map((path) => `<option value="${esc(path)}">${esc(artStem(path))}</option>`))
-      .join('');
-
     grid.innerHTML = missing.map((ing) => `
-      <div class="gal-miss-row">
+      <div class="gal-miss-row" data-ing-id="${esc(ing.id)}">
         <span class="gal-miss-name">${esc(ing.name)}</span>
-        <select class="gal-miss-select" data-ing-id="${esc(ing.id)}" aria-label="Assign art for ${esc(ing.name)}">
-          ${options}
-        </select>
+        <label class="gal-miss-drop">
+          <input type="file" class="gal-miss-file" accept="image/*" capture="environment" hidden />
+          <span class="gal-miss-drop-hint">Drop image or tap to pick</span>
+        </label>
       </div>
     `).join('') || `<p class="muted" style="text-align:center">None</p>`;
 
-    grid.querySelectorAll('select.gal-miss-select').forEach((sel) => {
-      sel.addEventListener('change', () => {
-        const path = sel.value;
-        if (!path) return;
-        assignArtToIngredient(sel.getAttribute('data-ing-id'), path);
-      });
-    });
+    grid.querySelectorAll('.gal-miss-row').forEach(bindMissingDropRow);
   }
 
   /* —— export / bidirectional SoT —— */
