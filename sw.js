@@ -1,5 +1,5 @@
 /* Offline-first service worker for Food Menus PWA */
-const CACHE = 'food-menus-v16';
+const CACHE = 'food-menus-v17';
 const PRECACHE = [
   './',
   './index.html',

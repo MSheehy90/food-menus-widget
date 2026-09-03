@@ -786,13 +786,10 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   background: radial-gradient(circle at 50% 40%, #43362c, #1c1612 78%);
   gap: 0.18rem;
 }
-.gal-tile.untitled .gal-title {
-  color: var(--ink);
-  max-height: 2.6em;
-}
-/* Only generic hq-## codes keep the gold untitled cue + accent title */
+.gal-tile.untitled .gal-title,
 .gal-tile.untitled.generic-id .gal-title {
   color: #f0c27a;
+  max-height: 2.6em;
 }
 .gal-tile .gal-untitled-tag {
   display: block;
@@ -803,9 +800,6 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   color: #f0c27a;
   opacity: 0.95;
   margin-bottom: 0.05rem;
-}
-.gal-tile.untitled.named-stem .gal-untitled-tag {
-  display: none;
 }
 .gal-name-select,
 .gal-new-name {
@@ -846,17 +840,32 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   line-height: 1.2;
   word-break: break-word;
 }
-.gal-miss-select {
+.gal-miss-drop {
+  display: grid;
+  place-items: center;
   width: 100%;
-  min-height: 2.35rem;
-  padding: 0.35rem 0.45rem;
+  min-height: 2.6rem;
+  padding: 0.4rem 0.5rem;
   border-radius: 10px;
-  border: 1px solid var(--line);
-  background: rgba(26,20,16,0.95);
-  color: var(--ink);
+  border: 1px dashed rgba(240, 194, 122, 0.55);
+  background: rgba(26, 20, 16, 0.95);
+  color: var(--dim);
   font-family: inherit;
   font-weight: 700;
-  font-size: 0.78rem;
+  font-size: 0.68rem;
+  text-align: center;
+  line-height: 1.25;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.gal-miss-drop.dragover {
+  border-style: solid;
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(212, 165, 116, 0.12);
+}
+.gal-miss-drop-hint {
+  pointer-events: none;
 }
 
 /* —— dialogs —— */
