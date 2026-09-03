@@ -1232,6 +1232,36 @@
     return base.replace(/\.png$/i, '');
   }
 
+  /** Generic HQ tile ids (hq-01…hq-73) are codes, not dish names. */
+  function isGenericHqStem(stem) {
+    const m = String(stem || '').toLowerCase().match(/^hq-(\d+)$/);
+    if (!m) return false;
+    const n = Number(m[1]);
+    return n >= 1 && n <= 73;
+  }
+
+  /**
+   * Human title from a filename stem.
+   * avocado → Avocado; 1_supply_whole-wheat-slices → Whole wheat slices.
+   * hq-02 stays hq-02 (never invent a food name).
+   */
+  function humanizeArtStem(stem) {
+    const raw = String(stem || '').trim();
+    if (!raw) return '';
+    if (isGenericHqStem(raw)) {
+      return raw.toLowerCase();
+    }
+    let base = raw
+      .replace(/^1_supply_/i, '')
+      .replace(/^ingredient_/i, '')
+      .replace(/[-_]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+    if (!base) return raw;
+    return base.charAt(0).toUpperCase() + base.slice(1);
+  }
+
   function normalizeArtPath(path) {
     return String(path || '')
       .trim()
@@ -1542,21 +1572,31 @@
     }
 
     if (state.galleryMode === 'untitled') {
-      const files = untitledArtFiles().filter((path) =>
-        galleryQueryMatch(artStem(path)) || galleryQueryMatch(path)
-      );
+      const files = untitledArtFiles().filter((path) => {
+        const stem = artStem(path);
+        const title = humanizeArtStem(stem);
+        return galleryQueryMatch(stem) ||
+          galleryQueryMatch(title) ||
+          galleryQueryMatch(path);
+      });
       const nameOptions = catalogNameOptionsHtml();
       grid.innerHTML = files.map((path) => {
         const stem = artStem(path);
+        const generic = isGenericHqStem(stem);
+        const title = humanizeArtStem(stem);
+        const tileClass = generic ? 'gal-tile untitled generic-id' : 'gal-tile untitled named-stem';
+        const cue = generic
+          ? `<span class="gal-untitled-tag">untitled</span>`
+          : '';
         return `
-        <div class="gal-tile untitled" data-art="${esc(path)}" title="${esc(stem)}">
+        <div class="${tileClass}" data-art="${esc(path)}" title="${esc(title)}">
           <div class="gal-thumb">
             <img class="art-fit art-${artSizeClass(path)}" src="${esc(path)}" alt="" loading="lazy" decoding="async" draggable="false" data-art="${esc(path)}" />
           </div>
-          <span class="gal-untitled-tag">untitled</span>
-          <span class="gal-title">${esc(stem)}</span>
-          <select class="gal-name-select" aria-label="Name ${esc(stem)}">${nameOptions}</select>
-          <input type="text" class="gal-new-name" placeholder="new name…" aria-label="New name for ${esc(stem)}" autocomplete="off" />
+          ${cue}
+          <span class="gal-title">${esc(title)}</span>
+          <select class="gal-name-select" aria-label="Name ${esc(title)}">${nameOptions}</select>
+          <input type="text" class="gal-new-name" placeholder="new name…" aria-label="New name for ${esc(title)}" autocomplete="off" />
         </div>`;
       }).join('') || `<p class="muted" style="grid-column:1/-1;text-align:center">None</p>`;
       grid.querySelectorAll('.gal-tile.untitled').forEach(bindUntitledTile);
