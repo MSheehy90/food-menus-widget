@@ -998,20 +998,20 @@
     });
 
     const out = [];
-    const seen = new Set();
-    list.forEach((ing) => {
-      const root = find(`ing:${ing.id}`);
-      if (seen.has(root)) return;
-      seen.add(root);
-      const group = groups.get(root) || [ing];
-      const withArt = group.filter((g) => artPathUsable(g.art));
-      const withAnyArt = group.filter((g) => normalizeArtPath(g.art) && !isArtDeleted(g.art));
-      const pool = withArt.length ? withArt : (withAnyArt.length ? withAnyArt : group);
-      const face = pool.slice().sort((a, b) => (
-        scoreFaceCandidate({ art: b.art, label: b.name, fromCatalog: true })
-        - scoreFaceCandidate({ art: a.art, label: a.name, fromCatalog: true })
-      ))[0];
-      out.push(face);
+    const seenFace = new Set();
+    groups.forEach((group) => {
+      splitLockerGroupsByObjectKey(group).forEach((part) => {
+        const withArt = part.filter((g) => artPathUsable(g.art));
+        const withAnyArt = part.filter((g) => normalizeArtPath(g.art) && !isArtDeleted(g.art));
+        const pool = withArt.length ? withArt : (withAnyArt.length ? withAnyArt : part);
+        const face = pool.slice().sort((a, b) => (
+          scoreFaceCandidate({ art: b.art, label: b.name, fromCatalog: true })
+          - scoreFaceCandidate({ art: a.art, label: a.name, fromCatalog: true })
+        ))[0];
+        if (!face || seenFace.has(face.id)) return;
+        seenFace.add(face.id);
+        out.push(face);
+      });
     });
     return out;
   }
@@ -2767,6 +2767,172 @@
   }
 
   /**
+   * After union-find, split a glued group when 2+ catalog names have different objectKeys
+   * AND there are 2+ distinct paintings (Kale vs Spinach). Keep single-painting chips
+   * (tomatoes) and same-objectKey variants (lemon / lemon wedges) intact.
+   */
+  function catalogObjectKeysFromNames(names) {
+    const keys = new Set();
+    (names || []).forEach((name) => {
+      const key = objectKeyFromLabel(name);
+      if (key) keys.add(key);
+    });
+    return keys;
+  }
+
+  function scoreArtForObjectKey(art, objectKey, labelsForKey) {
+    const path = normalizeArtPath(art);
+    if (!path || !objectKey) return -Infinity;
+    let best = scoreFaceCandidate({
+      art: path,
+      label: humanizeArtStem(artStem(path)),
+      fromCatalog: false
+    });
+    // Prefer exact object-key / stem alignment over a generic face score.
+    const stemKey = objectKeyFromLabel(humanizeArtStem(artStem(path)));
+    if (stemKey && stemKey === objectKey) best += 80;
+    (labelsForKey || []).forEach((label) => {
+      best = Math.max(best, scoreFaceCandidate({ art: path, label, fromCatalog: true }));
+      if (objectKeyFromLabel(label) === stemKey) best += 40;
+    });
+    return best;
+  }
+
+  function bestObjectKeyForArt(art, keyLabels) {
+    let bestKey = '';
+    let bestScore = -Infinity;
+    keyLabels.forEach((labels, objectKey) => {
+      const score = scoreArtForObjectKey(art, objectKey, labels);
+      if (score > bestScore || (score === bestScore && objectKey.localeCompare(bestKey) < 0)) {
+        bestScore = score;
+        bestKey = objectKey;
+      }
+    });
+    return bestKey;
+  }
+
+  function shouldSplitGluedFoodGroup(catalogNames, arts) {
+    const keys = catalogObjectKeysFromNames(catalogNames);
+    const distinctArts = [...new Set((arts || []).map(normalizeArtPath).filter(Boolean))];
+    return keys.size >= 2 && distinctArts.length >= 2;
+  }
+
+  /** Partition locker ingredient groups glued by shared art into one group per objectKey. */
+  function splitLockerGroupsByObjectKey(group) {
+    const ings = (group || []).filter(Boolean);
+    const catalogNames = ings.map((ing) => String(ing.name || '').trim()).filter(Boolean);
+    const arts = ings.map((ing) => normalizeArtPath(ing.art)).filter((p) => p && !isArtDeleted(p));
+    if (!shouldSplitGluedFoodGroup(catalogNames, arts)) return [ings];
+
+    const keyLabels = new Map();
+    ings.forEach((ing) => {
+      const name = String(ing.name || '').trim();
+      const key = objectKeyFromLabel(name);
+      if (!key) return;
+      if (!keyLabels.has(key)) keyLabels.set(key, []);
+      keyLabels.get(key).push(name);
+    });
+    if (keyLabels.size < 2) return [ings];
+
+    const artOwner = new Map();
+    [...new Set(arts)].forEach((art) => {
+      artOwner.set(art, bestObjectKeyForArt(art, keyLabels));
+    });
+
+    const buckets = new Map();
+    keyLabels.forEach((_, key) => buckets.set(key, []));
+    ings.forEach((ing) => {
+      const name = String(ing.name || '').trim();
+      let key = objectKeyFromLabel(name);
+      const art = normalizeArtPath(ing.art);
+      if (!key || !buckets.has(key)) {
+        key = (art && artOwner.get(art)) || [...buckets.keys()][0];
+      }
+      if (!key || !buckets.has(key)) return;
+      buckets.get(key).push(ing);
+    });
+
+    return [...buckets.values()].filter((list) => list.length);
+  }
+
+  /**
+   * Split a painted gallery union group into per-objectKey subgroups when warranted.
+   * Assigns each painting to the best matching catalog name/stem.
+   */
+  function splitPaintedGroupByObjectKey(g) {
+    const catalogNames = (g.ingredients || []).map((ing) => String(ing.name || '').trim()).filter(Boolean);
+    const arts = [...(g.arts || [])].map(normalizeArtPath).filter((p) => p && !isArtDeleted(p));
+    if (!shouldSplitGluedFoodGroup(catalogNames, arts)) return [g];
+
+    const keyLabels = new Map();
+    (g.ingredients || []).forEach((ing) => {
+      const name = String(ing.name || '').trim();
+      const key = objectKeyFromLabel(name);
+      if (!key) return;
+      if (!keyLabels.has(key)) keyLabels.set(key, []);
+      keyLabels.get(key).push(name);
+    });
+    if (keyLabels.size < 2) return [g];
+
+    const artOwner = new Map();
+    arts.forEach((art) => {
+      artOwner.set(art, bestObjectKeyForArt(art, keyLabels));
+    });
+
+    const buckets = new Map();
+    keyLabels.forEach((_, key) => {
+      buckets.set(key, {
+        root: `${g.root}::${key}`,
+        ingredients: [],
+        files: [],
+        arts: new Set(),
+        titles: [],
+        uiType: g.uiType,
+        uiFamily: g.uiFamily,
+        category: g.category,
+        group: g.group,
+        type: g.type
+      });
+    });
+
+    (g.ingredients || []).forEach((ing) => {
+      const name = String(ing.name || '').trim();
+      const key = objectKeyFromLabel(name);
+      const bucket = buckets.get(key);
+      if (!bucket) return;
+      bucket.ingredients.push(ing);
+      if (name) bucket.titles.push(name);
+      if (ing.uiType && (!bucket.uiType || bucket.uiType === 'Other')) bucket.uiType = ing.uiType;
+      if (ing.uiFamily && !bucket.uiFamily) bucket.uiFamily = ing.uiFamily;
+      if (ing.category && !bucket.category) bucket.category = ing.category;
+      if (ing.group && !bucket.group) bucket.group = ing.group;
+      if (ing.type && !bucket.type) bucket.type = ing.type;
+    });
+
+    arts.forEach((art) => {
+      const key = artOwner.get(art);
+      const bucket = buckets.get(key);
+      if (bucket) bucket.arts.add(art);
+    });
+
+    (g.files || []).forEach((f) => {
+      const art = normalizeArtPath(f.path);
+      let key = art ? artOwner.get(art) : '';
+      if (!key) key = objectKeyFromLabel(f.title);
+      if (!key || !buckets.has(key)) {
+        key = bestObjectKeyForArt(art || f.title, keyLabels);
+      }
+      const bucket = buckets.get(key);
+      if (!bucket) return;
+      bucket.files.push(f);
+      if (f.title) bucket.titles.push(f.title);
+      if (art) bucket.arts.add(art);
+    });
+
+    return [...buckets.values()].filter((b) => b.ingredients.length || b.files.length || b.arts.size);
+  }
+
+  /**
    * Painted / locker: one tile per food object.
    * Unions by shared art path, shared display title, and object key (lemon ≈ lemon wedges).
    * Extra paintings and empty/broken holes fold into details — never xN inventory labels.
@@ -2874,8 +3040,14 @@
     const faceMap = loadFaceArtMap();
     const items = [];
 
+    const splitGroups = [];
     groups.forEach((g) => {
-      const arts = [...g.arts].filter((p) => p && !isArtDeleted(p));
+      splitPaintedGroupByObjectKey(g).forEach((part) => splitGroups.push(part));
+    });
+
+    splitGroups.forEach((g) => {
+      const artSet = g.arts instanceof Set ? g.arts : new Set(g.arts || []);
+      const arts = [...artSet].filter((p) => p && !isArtDeleted(p));
       // Painted only shows objects that have at least one art path (usable or broken)
       if (!arts.length) return;
 
@@ -2883,11 +3055,25 @@
       g.ingredients.forEach((ing) => {
         const art = normalizeArtPath(ing.art);
         if (!art || isArtDeleted(art)) return;
+        // After a glued-food split, only keep paintings assigned to this objectKey.
+        if (artSet.size && !artSet.has(art)) return;
         candidates.push({ art, label: ing.name, fromCatalog: true, ing });
       });
       g.files.forEach((f) => {
+        const art = normalizeArtPath(f.path);
+        if (art && artSet.size && !artSet.has(art)) return;
         candidates.push({ art: f.path, label: f.title, fromCatalog: false });
       });
+      // If catalog art was filtered out (wrong shared path), still surface assigned paintings.
+      if (!candidates.length) {
+        arts.forEach((art) => {
+          const label = humanizeArtStem(artStem(art));
+          const ing = g.ingredients.find((i) => objectKeyFromLabel(i.name) === objectKeyFromLabel(label))
+            || g.ingredients[0]
+            || null;
+          candidates.push({ art, label: ing?.name || label, fromCatalog: Boolean(ing), ing: ing || undefined });
+        });
+      }
       if (!candidates.length) return;
 
       const objKey = objectKeyFromLabel(pickObjectTitle(g.ingredients, g.files.map((f) => f.title), arts[0]))
@@ -2944,8 +3130,8 @@
 
       items.push({
         kind: 'object',
-        id: `obj:${objKey || root}`,
-        objectKey: objKey || root,
+        id: `obj:${objKey || g.root}`,
+        objectKey: objKey || g.root,
         title,
         art: faceArt,
         uiType: g.uiType || 'Other',
