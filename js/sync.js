@@ -11,14 +11,14 @@
   const HEADERS = {
     ingredients: [
       'id', 'name', 'type', 'family', 'stage', 'process_chain',
-      'art_status', 'art_url', 'hunger_key', 'flavor_key', 'star_roles', 'shelf_days', 'updatedAt'
+      'art_status', 'art_url', 'form', 'hunger_key', 'flavor_key', 'star_roles', 'shelf_days', 'updatedAt'
     ],
     dishes: [
       'id', 'name', 'kind', 'parent_id', 'ingredient_ids', 'slots',
       'stars', 'hunger', 'flavor', 'kcal', 'status', 'style', 'restaurant', 'updatedAt'
     ],
     scoring: ['id', 'section', 'item', 'value', 'notes', 'updatedAt'],
-    assets: ['id', 'item', 'art_url', 'updatedAt'],
+    assets: ['id', 'item', 'art_url', 'form', 'updatedAt'],
     processes: [
       'id', 'name', 'output', 'input_ids', 'input_names', 'station', 'action_kind',
       'process_days', 'shelf_before', 'shelf_after', 'star_roles', 'updatedAt'
@@ -116,9 +116,28 @@
       .reduce((n, k) => n + Object.keys(store.dirty[k] || {}).length, 0);
   }
 
+  /* —— painting form (sliced / diced / unit / whole) —— */
+  function inferPaintingForm(art, label) {
+    const stem = String(art || '').split('/').pop() || '';
+    const stemWords = stem
+      .replace(/\.(png|jpe?g|webp|gif)$/i, '')
+      .replace(/^1_supply_/i, '')
+      .replace(/[-_]+/g, ' ');
+    const blob = `${label || ''} ${stemWords}`.toLowerCase().replace(/½/g, ' half ');
+    if (/\b(sliced|slices|slice|wedges|wedge|strips|strip)\b/.test(blob)) return 'sliced';
+    if (
+      /\b(unit|sprinkle|single|flakes|flake|pieces|piece|garnish)\b/.test(blob)
+      || /\bhalves?\b/.test(blob)
+      || /\bhalf\b/.test(blob)
+    ) return 'unit';
+    if (/\b(diced|chopped|mince|minced|shredded)\b/.test(blob)) return 'diced';
+    return 'whole';
+  }
+
   /* —— row mappers —— */
   function ingredientFromCatalog(ing, updatedAt) {
     const art = ing.art || '';
+    const form = ing.form || inferPaintingForm(art, ing.name);
     return {
       id: ing.id,
       name: ing.name,
@@ -128,6 +147,7 @@
       process_chain: (ing.chain || [ing.name]).join(' → '),
       art_status: art ? 'present' : 'MISSING',
       art_url: art || 'MISSING',
+      form: form || 'whole',
       hunger_key: ing.hungerKey || '',
       flavor_key: ing.flavorKey || '',
       star_roles: (ing.starRoles || []).join(','),
@@ -138,10 +158,12 @@
 
   function assetFromIngredient(ing, updatedAt) {
     const art = ing.art || '';
+    const form = ing.form || inferPaintingForm(art, ing.name);
     return {
       id: ing.id,
       item: ing.name,
       art_url: art || 'MISSING',
+      form: form || 'whole',
       updatedAt: updatedAt || ing.updatedAt || nowIso()
     };
   }
@@ -281,6 +303,7 @@
         if (row.star_roles != null) {
           ing.starRoles = String(row.star_roles).split(',').map((s) => s.trim()).filter(Boolean);
         }
+        if (row.form) ing.form = String(row.form).trim().toLowerCase();
       }
       const asset = assetMap?.[row.id];
       const artRaw = (asset && asset.art_url) || row.art_url || '';
@@ -289,9 +312,193 @@
       } else if (artRaw === 'MISSING' || row.art_status === 'MISSING') {
         ing.art = '';
       }
+      if (!ing.form) {
+        const assetForm = asset?.form;
+        ing.form = String(assetForm || row.form || inferPaintingForm(ing.art, ing.name) || 'whole').toLowerCase();
+      }
       ing.updatedAt = row.updatedAt;
     });
     return catalog;
+  }
+
+  function slugFoodMasterId(name, usedIds) {
+    const base = String(name || '')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'item';
+    let id = base;
+    let n = 2;
+    while (usedIds.has(id)) {
+      id = `${base}-${n++}`;
+    }
+    usedIds.add(id);
+    return id;
+  }
+
+  function ensureCatalogHierarchy(catalog, ing) {
+    const hier = catalog.hierarchy || (catalog.hierarchy = {});
+    Object.keys(hier).forEach((t) => {
+      Object.keys(hier[t] || {}).forEach((f) => {
+        hier[t][f] = (hier[t][f] || []).filter((id) => id !== ing.id);
+      });
+    });
+    const type = ing.uiType || 'Other';
+    const fam = ing.uiFamily || 'Misc';
+    if (!hier[type]) hier[type] = {};
+    if (!hier[type][fam]) hier[type][fam] = [];
+    if (!hier[type][fam].includes(ing.id)) hier[type][fam].push(ing.id);
+    if (Array.isArray(catalog.typeOrder) && !catalog.typeOrder.includes(type)) {
+      catalog.typeOrder.push(type);
+    }
+  }
+
+  /**
+   * Parse Food Master sheet values. Header is typically CSV row 3:
+   * Row,Item,Stage,Group,Category,Type,...
+   */
+  function parseFoodMasterSheetValues(values) {
+    const rows = values || [];
+    let headerIdx = -1;
+    let headers = [];
+    for (let i = 0; i < Math.min(rows.length, 12); i++) {
+      const cells = (rows[i] || []).map((c) => String(c || '').trim());
+      if (cells.includes('Item') && (cells.includes('Group') || cells.includes('Category'))) {
+        headerIdx = i;
+        headers = cells.map((h) => h.toLowerCase());
+        break;
+      }
+    }
+    if (headerIdx < 0) return [];
+    const idx = (name) => headers.indexOf(String(name).toLowerCase());
+    const iItem = idx('item');
+    const iStage = idx('stage');
+    const iGroup = idx('group');
+    const iCategory = idx('category');
+    const iType = idx('type');
+    const out = [];
+    for (let r = headerIdx + 1; r < rows.length; r++) {
+      const line = rows[r] || [];
+      const item = String(line[iItem] ?? '').trim();
+      if (!item) continue;
+      out.push({
+        item,
+        stage: String(line[iStage] ?? '').trim(),
+        group: String(line[iGroup] ?? '').trim(),
+        category: String(line[iCategory] ?? '').trim(),
+        type: String(line[iType] ?? '').trim()
+      });
+    }
+    return out;
+  }
+
+  function foodMasterRowsFromBaked(data) {
+    return (data?.rows || []).map((row) => ({
+      item: row.item || row.Item || '',
+      stage: row.stage || '',
+      stageRaw: row.stageRaw || row.stage || '',
+      group: row.group || '',
+      category: row.category || '',
+      type: row.type || ''
+    })).filter((r) => r.item);
+  }
+
+  async function loadBakedFoodMasterRows() {
+    try {
+      const res = await fetch('data/food-master-v2.json');
+      if (!res.ok) return [];
+      return foodMasterRowsFromBaked(await res.json());
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Read-only merge of Food Master Item roster into catalog.
+   * Creates missing catalog rows; updates uiType from Group and uiFamily/category from Category.
+   * Does NOT invent HQ extras or write back to Food Master.
+   */
+  function applyFoodMasterRowsToCatalog(catalog, masterRows) {
+    if (!catalog || !Array.isArray(masterRows)) return { created: 0, updated: 0 };
+    const usedIds = new Set((catalog.ingredients || []).map((i) => i.id));
+    const byName = new Map();
+    (catalog.ingredients || []).forEach((ing) => {
+      byName.set(String(ing.name || '').trim().toLowerCase(), ing);
+    });
+    let created = 0;
+    let updated = 0;
+    masterRows.forEach((row) => {
+      const name = String(row.item || '').trim();
+      if (!name) return;
+      const group = String(row.group || '').trim();
+      const category = String(row.category || '').trim();
+      const type = String(row.type || '').trim();
+      const stageCode = String(row.stage || '').trim();
+      const stageRaw = String(row.stageRaw || row.stage || '').trim();
+      const stage = (() => {
+        const s = (stageCode || stageRaw).toLowerCase();
+        if (!s) return '';
+        if (s.includes('process') || s === 'made' || s === 'processed') return 'processed';
+        if (s.includes('primary') || s.includes('raw') || s.includes('butcher')) return 'primary';
+        return stageCode || s;
+      })();
+      let ing = byName.get(name.toLowerCase());
+      if (!ing) {
+        const id = slugFoodMasterId(name, usedIds);
+        ing = {
+          id,
+          name,
+          group: group || 'Other',
+          pyramid: group || '',
+          category: category || '',
+          type,
+          stage: stage || 'primary',
+          stageRaw: stageRaw || stage || 'Primary',
+          uiType: group || 'Other',
+          uiFamily: category || 'Misc',
+          processed: stage === 'processed',
+          chain: [name],
+          art: '',
+          unlocked: true,
+          exclusive: null,
+          process: null,
+          source: 'food-master',
+          starRoles: [],
+          starValue: 0,
+          form: 'whole'
+        };
+        catalog.ingredients.push(ing);
+        byName.set(name.toLowerCase(), ing);
+        created += 1;
+      } else {
+        let changed = false;
+        if (group && (ing.uiType !== group || ing.group !== group)) {
+          ing.uiType = group;
+          ing.group = group;
+          changed = true;
+        }
+        if (category && (ing.uiFamily !== category || ing.category !== category)) {
+          ing.uiFamily = category;
+          ing.category = category;
+          changed = true;
+        }
+        if (type !== '' && ing.type !== type) {
+          ing.type = type;
+          changed = true;
+        }
+        if (stage && ing.stage !== stage) {
+          ing.stage = stage;
+          changed = true;
+        }
+        if (stageRaw && ing.stageRaw !== stageRaw) {
+          ing.stageRaw = stageRaw;
+          changed = true;
+        }
+        if (changed) updated += 1;
+      }
+      ensureCatalogHierarchy(catalog, ing);
+    });
+    return { created, updated };
   }
 
   function upsertLocal(collection, row, { dirty = true } = {}) {
@@ -563,8 +770,28 @@
     store.processes = mergeById(store.processes, incoming.processes, { preferIncomingOnTie: true });
     store.lastPullAt = nowIso();
     saveCache(store);
+
+    let foodMasterRows = [];
+    const masterId = String(CFG().FOOD_MASTER_SHEET_ID || '').trim();
+    if (masterId) {
+      status('Pulling Food Master…');
+      try {
+        const fmRes = await window.gapi.client.sheets.spreadsheets.values.get({
+          spreadsheetId: masterId,
+          range: 'A1:Z'
+        });
+        foodMasterRows = parseFoodMasterSheetValues(fmRes.result.values || []);
+        status(`Food Master · ${foodMasterRows.length} item row(s)`);
+      } catch (err) {
+        status(`Food Master live pull failed — using baked fallback (${err.message || err})`);
+        foodMasterRows = await loadBakedFoodMasterRows();
+      }
+    } else {
+      foodMasterRows = await loadBakedFoodMasterRows();
+    }
+
     status(`Pulled & merged · ${dirtyCount(store)} dirty local row(s)`);
-    return { ok: true, store, incoming };
+    return { ok: true, store, incoming, foodMasterRows };
   }
 
   function buildDumpPayload(store) {
@@ -685,6 +912,8 @@
       onStatus('Local SoT cache ready · live two-way needs HTTPS + Google sign-in');
     }
     applyIngredientRowsToCatalog(catalog, store.ingredients, store.assets);
+    const baked = await loadBakedFoodMasterRows();
+    applyFoodMasterRowsToCatalog(catalog, baked);
     return store;
   }
 
@@ -757,6 +986,11 @@
     syncDishesFromKept,
     markDishStatus,
     applyIngredientRowsToCatalog,
+    applyFoodMasterRowsToCatalog,
+    parseFoodMasterSheetValues,
+    loadBakedFoodMasterRows,
+    foodMasterRowsFromBaked,
+    inferPaintingForm,
     flattenDishes,
     ingredientFromCatalog,
     assetFromIngredient,

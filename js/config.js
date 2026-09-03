@@ -5,6 +5,9 @@ window.FOOD_MENUS_CONFIG = Object.freeze({
   /** Bidirectional data-dump sheet (Ingredients / Dishes / Scoring rules / Assets). */
   SHEET_ID: '1GoFYXh1AMKguFIv6XuBwQ7sxFfwN9QWAyx3fn4akl-U',
   SHEET_URL: 'https://docs.google.com/spreadsheets/d/1GoFYXh1AMKguFIv6XuBwQ7sxFfwN9QWAyx3fn4akl-U/edit',
+  /** Read-only Food Master (Snowpiercer Food Master 173) — Item roster source on Pull. */
+  FOOD_MASTER_SHEET_ID: '1ShKoeUKdthTgd6Y2zmAyNkUiv0wpkqmOyaZ1D_TX7DQ',
+  FOOD_MASTER_SHEET_URL: 'https://docs.google.com/spreadsheets/d/1ShKoeUKdthTgd6Y2zmAyNkUiv0wpkqmOyaZ1D_TX7DQ/edit',
   /** Preferred tab titles — created on first authenticated write if missing. */
   TABS: Object.freeze({
     ingredients: 'Ingredients',

@@ -13,6 +13,7 @@
     type: null,
     family: '__all__',
     stage: 'all',
+    formFilter: '',
     lockerSearch: '',
     dishesSearch: '',
     processSearch: '',
@@ -897,6 +898,22 @@
     });
   }
 
+  function renderFormRail() {
+    const el = $('#form-rail');
+    if (!el) return;
+    el.querySelectorAll('.form-chip').forEach((btn) => {
+      const form = btn.dataset.form || '';
+      const on = state.formFilter === form;
+      btn.classList.toggle('active', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      btn.onclick = () => {
+        state.formFilter = on ? '' : form;
+        renderFormRail();
+        renderGrid();
+      };
+    });
+  }
+
   function renderTypeRail() {
     const order = state.catalog.typeOrder;
     $('#type-rail').innerHTML = order.map((t) => `
@@ -998,20 +1015,20 @@
     });
 
     const out = [];
-    const seen = new Set();
-    list.forEach((ing) => {
-      const root = find(`ing:${ing.id}`);
-      if (seen.has(root)) return;
-      seen.add(root);
-      const group = groups.get(root) || [ing];
-      const withArt = group.filter((g) => artPathUsable(g.art));
-      const withAnyArt = group.filter((g) => normalizeArtPath(g.art) && !isArtDeleted(g.art));
-      const pool = withArt.length ? withArt : (withAnyArt.length ? withAnyArt : group);
-      const face = pool.slice().sort((a, b) => (
-        scoreFaceCandidate({ art: b.art, label: b.name, fromCatalog: true })
-        - scoreFaceCandidate({ art: a.art, label: a.name, fromCatalog: true })
-      ))[0];
-      out.push(face);
+    const seenFace = new Set();
+    groups.forEach((group) => {
+      splitLockerGroupsByObjectKey(group).forEach((part) => {
+        const withArt = part.filter((g) => artPathUsable(g.art));
+        const withAnyArt = part.filter((g) => normalizeArtPath(g.art) && !isArtDeleted(g.art));
+        const pool = withArt.length ? withArt : (withAnyArt.length ? withAnyArt : part);
+        const face = pool.slice().sort((a, b) => (
+          scoreFaceCandidate({ art: b.art, label: b.name, fromCatalog: true })
+          - scoreFaceCandidate({ art: a.art, label: a.name, fromCatalog: true })
+        ))[0];
+        if (!face || seenFace.has(face.id)) return;
+        seenFace.add(face.id);
+        out.push(face);
+      });
     });
     return out;
   }
@@ -1177,12 +1194,14 @@
   }
 
   function renderGrid() {
-    const ings = familyIngredients();
+    const ings = applyLockerFormFilter(familyIngredients());
     const sel = selectedIds();
     const armed = Boolean(state.armedSlotId && state.mode === 'dish');
     const emptyMsg = state.lockerSearch.trim()
       ? 'No ingredients match'
-      : (state.stage === 'made' ? 'No made ingredients here' : 'Empty family');
+      : (state.formFilter
+        ? `No ${state.formFilter} forms here`
+        : (state.stage === 'made' ? 'No made ingredients here' : 'Empty family'));
     const grid = $('#ingredient-grid');
     grid.classList.toggle('slot-arming', armed);
 
@@ -1195,14 +1214,18 @@
     const showHeads = groups.length > 1;
     grid.innerHTML = groups.map(({ key, items }) => `
       ${showHeads ? sectionHeadHtml(key) : ''}
-      ${items.map((ing) => `
+      ${items.map((ing) => {
+        const faceForm = ing._formFace || inferPaintingForm(ing.art, ing._formLabel || ing.name);
+        const badge = (faceForm && faceForm !== 'whole') ? formBadgeHtml(faceForm, 'on-tile') : '';
+        return `
         <button type="button" class="ing-tile ${sel.has(ing.id) ? 'selected' : ''} ${ingredientNeedsArt(ing) ? 'missing-art' : ''} ${isArtBroken(ing.art) ? 'broken-art' : ''} ${isMade(ing) ? 'is-made' : ''}"
           data-id="${esc(ing.id)}" aria-label="${esc(ing.name)}">
           ${isMade(ing) ? '<span class="chain-cue" title="Process chain" aria-hidden="true"></span>' : ''}
           ${ingredientHasFlaggedArt(ing) ? '<span class="ing-flag-badge" title="Flagged" aria-label="Flagged">⚑</span>' : ''}
+          ${badge}
           ${artHtml(ing)}
-        </button>
-      `).join('')}
+        </button>`;
+      }).join('')}
     `).join('');
 
     grid.querySelectorAll('.ing-tile').forEach((btn) => {
@@ -1314,6 +1337,7 @@
       const status = !p.usable
         ? (p.broken ? 'broken' : 'unavailable')
         : (isFace ? 'grid face' : 'alt');
+      const form = inferPaintingForm(p.art, p.label);
       const thumb = p.usable
         ? `<img class="art-fit" src="${esc(resolveArtSrc(p.art))}" alt="" draggable="false" data-art="${esc(p.art)}" />`
         : `<span class="name-fallback art-broken">?</span>`;
@@ -1322,7 +1346,7 @@
         : '';
       const flagHtml = detailFlagControlsHtml(p.art, { label: p.label, objectKey });
       return `<div class="detail-variant-row" data-art="${esc(p.art)}">
-        <div class="detail-variant-thumb">${thumb}</div>
+        <div class="detail-variant-thumb">${thumb}${formBadgeHtml(form, 'on-variant')}</div>
         <div class="detail-variant-copy">
           <div class="detail-variant-name">${esc(p.label)}</div>
           <div class="detail-variant-meta">${esc(status)}</div>
@@ -2680,7 +2704,8 @@
       .trim();
     if (!s) return '';
     const strip = new Set([
-      'wedges', 'wedge', 'slices', 'slice', 'halves', 'half',
+      'wedges', 'wedge', 'slices', 'slice', 'sliced', 'slicing',
+      'halves', 'half',
       'chopped', 'bunch', 'unit', 'whole', 'cracked', 'peeled',
       'diced', 'minced', 'grated', 'flakes', 'flake', 'strips', 'strip',
       'boiled', 'seasoned', 'dry', 'aged', 'dried', 'fresh', 'raw',
@@ -2699,8 +2724,114 @@
   }
 
   function isFormishLabel(label) {
-    return /\b(wedges?|slices?|halves?|chopped|flakes?|strips?|streusel|boiled|seasoned|½)\b/i.test(String(label || ''))
+    return /\b(wedges?|sliced|slicing|slices?|halves?|chopped|flakes?|strips?|streusel|boiled|seasoned|½)\b/i.test(String(label || ''))
       || /^½/.test(String(label || ''));
+  }
+
+  /** Sliced / slicing form (not plain "slices" alone) — drives the knife badge. */
+  function inferPaintingForm(art, label) {
+    if (Sync()?.inferPaintingForm) return Sync().inferPaintingForm(art, label);
+    const stem = String(artStem(art) || '');
+    const human = humanizeArtStem(stem);
+    const blob = `${label || ''} ${human} ${stem.replace(/[-_]+/g, ' ')}`.toLowerCase().replace(/½/g, ' half ');
+    if (/\b(sliced|slices|slice|wedges|wedge|strips|strip)\b/.test(blob)) return 'sliced';
+    if (
+      /\b(unit|sprinkle|single|flakes|flake|pieces|piece|garnish)\b/.test(blob)
+      || /\bhalves?\b/.test(blob)
+      || /\bhalf\b/.test(blob)
+    ) return 'unit';
+    if (/\b(diced|chopped|mince|minced|shredded)\b/.test(blob)) return 'diced';
+    return 'whole';
+  }
+
+  function isSlicedPainting(art, label) {
+    return inferPaintingForm(art, label) === 'sliced';
+  }
+
+  function formBadgeHtml(form, extraClass = '') {
+    const kind = String(form || '').toLowerCase();
+    if (kind !== 'sliced' && kind !== 'diced' && kind !== 'unit') return '';
+    const cls = ['form-badge', `form-${kind}`, extraClass].filter(Boolean).join(' ');
+    const label = kind === 'sliced' ? 'Sliced' : (kind === 'diced' ? 'Diced' : 'Single unit');
+    let svg = '';
+    if (kind === 'sliced') {
+      svg = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+        <path fill="currentColor" d="M3.2 20.2c-.4.4-.4 1 0 1.4.4.4 1 .4 1.4 0L14 12.2l1.1-1.1-2.2-2.2L3.2 20.2zm17.1-12.4c.9-.9.9-2.3 0-3.2-.9-.9-2.3-.9-3.2 0l-1.3 1.3 3.2 3.2 1.3-1.3zM14.6 6.3l-1.5 1.5 3.2 3.2 1.5-1.5-3.2-3.2z"/>
+      </svg>`;
+    } else if (kind === 'diced') {
+      svg = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+        <rect x="3" y="3" width="8" height="8" rx="1.5" fill="currentColor"/>
+        <rect x="13" y="3" width="8" height="8" rx="1.5" fill="currentColor"/>
+        <rect x="3" y="13" width="8" height="8" rx="1.5" fill="currentColor"/>
+        <rect x="13" y="13" width="8" height="8" rx="1.5" fill="currentColor"/>
+      </svg>`;
+    } else {
+      svg = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+        <rect x="7" y="7" width="10" height="10" rx="2.5" fill="currentColor"/>
+      </svg>`;
+    }
+    return `<span class="${cls}" title="${esc(label)}" aria-label="${esc(label)}">${svg}</span>`;
+  }
+
+  function knifeBadgeHtml(extraClass = '') {
+    return formBadgeHtml('sliced', extraClass);
+  }
+
+  /** Prefer the user's chosen grid-face painting for an object when rendering tiles. */
+  function faceDisplayIngredient(ing) {
+    if (!ing) return ing;
+    const key = objectKeyFromLabel(ing.name);
+    if (!key) return ing;
+    const preferred = normalizeArtPath(loadFaceArtMap()[key]);
+    if (preferred && artPathUsable(preferred) && preferred !== normalizeArtPath(ing.art)) {
+      return { ...ing, art: preferred };
+    }
+    return ing;
+  }
+
+  /** Find a painting (or named sibling) matching the active form filter. */
+  function findFormPaintingForIngredient(ing, form) {
+    if (!ing || !form) return null;
+    const obj = resolveGalleryObject(ing);
+    const paintings = obj?.paintings?.length
+      ? obj.paintings
+      : [{ art: ing.art, label: ing.name }];
+    const hit = paintings.find((p) => inferPaintingForm(p.art, p.label) === form);
+    if (hit) return hit;
+    const key = objectKeyFromLabel(ing.name);
+    const sibling = (state.catalog.ingredients || []).find((other) => (
+      other.id !== ing.id
+      && objectKeyFromLabel(other.name) === key
+      && inferPaintingForm(other.art, other.name) === form
+    ));
+    if (sibling && normalizeArtPath(sibling.art)) {
+      return { art: sibling.art, label: sibling.name, ingId: sibling.id };
+    }
+    // Name-only form match (no dedicated art) — still counts for filter membership.
+    const nameHit = (obj?.names || [ing.name]).find((n) => inferPaintingForm('', n) === form);
+    if (nameHit) return { art: '', label: nameHit };
+    return null;
+  }
+
+  function applyLockerFormFilter(ings) {
+    const form = state.formFilter;
+    if (!form) {
+      return (ings || []).map((ing) => faceDisplayIngredient(ing));
+    }
+    const out = [];
+    (ings || []).forEach((ing) => {
+      const match = findFormPaintingForIngredient(ing, form);
+      if (!match) return;
+      const base = faceDisplayIngredient(ing);
+      const art = normalizeArtPath(match.art) || normalizeArtPath(base.art);
+      out.push({
+        ...base,
+        art: art || base.art,
+        _formFace: form,
+        _formLabel: match.label || base.name
+      });
+    });
+    return out;
   }
 
   function artPathUsable(path) {
@@ -2764,6 +2895,172 @@
     }
     const nonForm = ranked.find((n) => !isFormishLabel(n));
     return nonForm || ranked[0];
+  }
+
+  /**
+   * After union-find, split a glued group when 2+ catalog names have different objectKeys
+   * AND there are 2+ distinct paintings (Kale vs Spinach). Keep single-painting chips
+   * (tomatoes) and same-objectKey variants (lemon / lemon wedges) intact.
+   */
+  function catalogObjectKeysFromNames(names) {
+    const keys = new Set();
+    (names || []).forEach((name) => {
+      const key = objectKeyFromLabel(name);
+      if (key) keys.add(key);
+    });
+    return keys;
+  }
+
+  function scoreArtForObjectKey(art, objectKey, labelsForKey) {
+    const path = normalizeArtPath(art);
+    if (!path || !objectKey) return -Infinity;
+    let best = scoreFaceCandidate({
+      art: path,
+      label: humanizeArtStem(artStem(path)),
+      fromCatalog: false
+    });
+    // Prefer exact object-key / stem alignment over a generic face score.
+    const stemKey = objectKeyFromLabel(humanizeArtStem(artStem(path)));
+    if (stemKey && stemKey === objectKey) best += 80;
+    (labelsForKey || []).forEach((label) => {
+      best = Math.max(best, scoreFaceCandidate({ art: path, label, fromCatalog: true }));
+      if (objectKeyFromLabel(label) === stemKey) best += 40;
+    });
+    return best;
+  }
+
+  function bestObjectKeyForArt(art, keyLabels) {
+    let bestKey = '';
+    let bestScore = -Infinity;
+    keyLabels.forEach((labels, objectKey) => {
+      const score = scoreArtForObjectKey(art, objectKey, labels);
+      if (score > bestScore || (score === bestScore && objectKey.localeCompare(bestKey) < 0)) {
+        bestScore = score;
+        bestKey = objectKey;
+      }
+    });
+    return bestKey;
+  }
+
+  function shouldSplitGluedFoodGroup(catalogNames, arts) {
+    const keys = catalogObjectKeysFromNames(catalogNames);
+    const distinctArts = [...new Set((arts || []).map(normalizeArtPath).filter(Boolean))];
+    return keys.size >= 2 && distinctArts.length >= 2;
+  }
+
+  /** Partition locker ingredient groups glued by shared art into one group per objectKey. */
+  function splitLockerGroupsByObjectKey(group) {
+    const ings = (group || []).filter(Boolean);
+    const catalogNames = ings.map((ing) => String(ing.name || '').trim()).filter(Boolean);
+    const arts = ings.map((ing) => normalizeArtPath(ing.art)).filter((p) => p && !isArtDeleted(p));
+    if (!shouldSplitGluedFoodGroup(catalogNames, arts)) return [ings];
+
+    const keyLabels = new Map();
+    ings.forEach((ing) => {
+      const name = String(ing.name || '').trim();
+      const key = objectKeyFromLabel(name);
+      if (!key) return;
+      if (!keyLabels.has(key)) keyLabels.set(key, []);
+      keyLabels.get(key).push(name);
+    });
+    if (keyLabels.size < 2) return [ings];
+
+    const artOwner = new Map();
+    [...new Set(arts)].forEach((art) => {
+      artOwner.set(art, bestObjectKeyForArt(art, keyLabels));
+    });
+
+    const buckets = new Map();
+    keyLabels.forEach((_, key) => buckets.set(key, []));
+    ings.forEach((ing) => {
+      const name = String(ing.name || '').trim();
+      let key = objectKeyFromLabel(name);
+      const art = normalizeArtPath(ing.art);
+      if (!key || !buckets.has(key)) {
+        key = (art && artOwner.get(art)) || [...buckets.keys()][0];
+      }
+      if (!key || !buckets.has(key)) return;
+      buckets.get(key).push(ing);
+    });
+
+    return [...buckets.values()].filter((list) => list.length);
+  }
+
+  /**
+   * Split a painted gallery union group into per-objectKey subgroups when warranted.
+   * Assigns each painting to the best matching catalog name/stem.
+   */
+  function splitPaintedGroupByObjectKey(g) {
+    const catalogNames = (g.ingredients || []).map((ing) => String(ing.name || '').trim()).filter(Boolean);
+    const arts = [...(g.arts || [])].map(normalizeArtPath).filter((p) => p && !isArtDeleted(p));
+    if (!shouldSplitGluedFoodGroup(catalogNames, arts)) return [g];
+
+    const keyLabels = new Map();
+    (g.ingredients || []).forEach((ing) => {
+      const name = String(ing.name || '').trim();
+      const key = objectKeyFromLabel(name);
+      if (!key) return;
+      if (!keyLabels.has(key)) keyLabels.set(key, []);
+      keyLabels.get(key).push(name);
+    });
+    if (keyLabels.size < 2) return [g];
+
+    const artOwner = new Map();
+    arts.forEach((art) => {
+      artOwner.set(art, bestObjectKeyForArt(art, keyLabels));
+    });
+
+    const buckets = new Map();
+    keyLabels.forEach((_, key) => {
+      buckets.set(key, {
+        root: `${g.root}::${key}`,
+        ingredients: [],
+        files: [],
+        arts: new Set(),
+        titles: [],
+        uiType: g.uiType,
+        uiFamily: g.uiFamily,
+        category: g.category,
+        group: g.group,
+        type: g.type
+      });
+    });
+
+    (g.ingredients || []).forEach((ing) => {
+      const name = String(ing.name || '').trim();
+      const key = objectKeyFromLabel(name);
+      const bucket = buckets.get(key);
+      if (!bucket) return;
+      bucket.ingredients.push(ing);
+      if (name) bucket.titles.push(name);
+      if (ing.uiType && (!bucket.uiType || bucket.uiType === 'Other')) bucket.uiType = ing.uiType;
+      if (ing.uiFamily && !bucket.uiFamily) bucket.uiFamily = ing.uiFamily;
+      if (ing.category && !bucket.category) bucket.category = ing.category;
+      if (ing.group && !bucket.group) bucket.group = ing.group;
+      if (ing.type && !bucket.type) bucket.type = ing.type;
+    });
+
+    arts.forEach((art) => {
+      const key = artOwner.get(art);
+      const bucket = buckets.get(key);
+      if (bucket) bucket.arts.add(art);
+    });
+
+    (g.files || []).forEach((f) => {
+      const art = normalizeArtPath(f.path);
+      let key = art ? artOwner.get(art) : '';
+      if (!key) key = objectKeyFromLabel(f.title);
+      if (!key || !buckets.has(key)) {
+        key = bestObjectKeyForArt(art || f.title, keyLabels);
+      }
+      const bucket = buckets.get(key);
+      if (!bucket) return;
+      bucket.files.push(f);
+      if (f.title) bucket.titles.push(f.title);
+      if (art) bucket.arts.add(art);
+    });
+
+    return [...buckets.values()].filter((b) => b.ingredients.length || b.files.length || b.arts.size);
   }
 
   /**
@@ -2874,8 +3171,14 @@
     const faceMap = loadFaceArtMap();
     const items = [];
 
+    const splitGroups = [];
     groups.forEach((g) => {
-      const arts = [...g.arts].filter((p) => p && !isArtDeleted(p));
+      splitPaintedGroupByObjectKey(g).forEach((part) => splitGroups.push(part));
+    });
+
+    splitGroups.forEach((g) => {
+      const artSet = g.arts instanceof Set ? g.arts : new Set(g.arts || []);
+      const arts = [...artSet].filter((p) => p && !isArtDeleted(p));
       // Painted only shows objects that have at least one art path (usable or broken)
       if (!arts.length) return;
 
@@ -2883,11 +3186,25 @@
       g.ingredients.forEach((ing) => {
         const art = normalizeArtPath(ing.art);
         if (!art || isArtDeleted(art)) return;
+        // After a glued-food split, only keep paintings assigned to this objectKey.
+        if (artSet.size && !artSet.has(art)) return;
         candidates.push({ art, label: ing.name, fromCatalog: true, ing });
       });
       g.files.forEach((f) => {
+        const art = normalizeArtPath(f.path);
+        if (art && artSet.size && !artSet.has(art)) return;
         candidates.push({ art: f.path, label: f.title, fromCatalog: false });
       });
+      // If catalog art was filtered out (wrong shared path), still surface assigned paintings.
+      if (!candidates.length) {
+        arts.forEach((art) => {
+          const label = humanizeArtStem(artStem(art));
+          const ing = g.ingredients.find((i) => objectKeyFromLabel(i.name) === objectKeyFromLabel(label))
+            || g.ingredients[0]
+            || null;
+          candidates.push({ art, label: ing?.name || label, fromCatalog: Boolean(ing), ing: ing || undefined });
+        });
+      }
       if (!candidates.length) return;
 
       const objKey = objectKeyFromLabel(pickObjectTitle(g.ingredients, g.files.map((f) => f.title), arts[0]))
@@ -2944,8 +3261,8 @@
 
       items.push({
         kind: 'object',
-        id: `obj:${objKey || root}`,
-        objectKey: objKey || root,
+        id: `obj:${objKey || g.root}`,
+        objectKey: objKey || g.root,
         title,
         art: faceArt,
         uiType: g.uiType || 'Other',
@@ -3132,17 +3449,22 @@
       const showHeads = groups.length > 1;
       grid.innerHTML = groups.map(({ key, items: list }) => `
         ${showHeads ? sectionHeadHtml(key) : ''}
-        ${list.map((it) => `
+        ${list.map((it) => {
+          const paintLabel = ((it.paintings || []).find((p) => normalizeArtPath(p.art) === normalizeArtPath(it.art)) || {}).label || it.title;
+          const faceForm = inferPaintingForm(it.art, paintLabel);
+          const badge = (faceForm && faceForm !== 'whole') ? formBadgeHtml(faceForm, 'on-tile') : '';
+          return `
           <div class="gal-tile ${isArtBroken(it.art) ? 'broken-art' : ''}" data-gal-id="${esc(it.id)}" title="${esc(it.title)}">
             ${objectHasFlaggedArt(it) ? '<span class="gal-flag-badge" title="Flagged" aria-label="Flagged">⚑</span>' : ''}
+            ${badge}
             <div class="gal-thumb">
               ${isArtBroken(it.art)
                 ? `<span class="name-fallback art-broken">?</span>`
                 : `<img class="art-fit art-${artSizeClass(it.art)}" src="${esc(resolveArtSrc(it.art))}" alt="" loading="lazy" decoding="async" draggable="false" data-art="${esc(it.art)}" />`}
             </div>
             <span class="gal-title">${esc(it.title)}</span>
-          </div>
-        `).join('')}
+          </div>`;
+        }).join('')}
       `).join('');
       const byId = new Map(items.map((it) => [it.id, it]));
       grid.querySelectorAll('.gal-tile').forEach((tile) => {
@@ -3308,6 +3630,7 @@
             prev.name === row.name &&
             prev.art_url === row.art_url &&
             prev.process_chain === row.process_chain &&
+            prev.form === row.form &&
             prev.hunger_key === row.hunger_key &&
             prev.flavor_key === row.flavor_key &&
             prev.star_roles === row.star_roles;
@@ -3335,10 +3658,20 @@
     try {
       const result = await Sync().pullFromSheet({ onStatus: setDriveStatus });
       if (result.reason === 'missing-client-id') {
-        setDriveStatus('Live two-way needs HTTPS + Google sign-in');
+        const baked = await Sync().loadBakedFoodMasterRows();
+        const stats = Sync().applyFoodMasterRowsToCatalog(state.catalog, baked);
+        applyDeletedArtDenylistToCatalog();
+        rebuildIndexes();
+        renderGrid();
+        renderGallery();
+        setDriveStatus(`Merged baked Food Master · +${stats.created} / ~${stats.updated} · live two-way needs HTTPS + Google sign-in`);
         return;
       }
       Sync().applyIngredientRowsToCatalog(state.catalog, result.store.ingredients, result.store.assets);
+      const masterRows = result.foodMasterRows?.length
+        ? result.foodMasterRows
+        : await Sync().loadBakedFoodMasterRows();
+      const fmStats = Sync().applyFoodMasterRowsToCatalog(state.catalog, masterRows);
       applyDeletedArtDenylistToCatalog();
       rebuildIndexes();
       // Merge dishes from sheet into kept
@@ -3368,7 +3701,7 @@
       renderGrid();
       renderTray();
       renderGallery();
-      setDriveStatus(`Merged from sheet · ${state.kept.length} kept · ${Sync().dirtyCount(result.store)} dirty`);
+      setDriveStatus(`Merged from sheet · Food Master +${fmStats.created}/~${fmStats.updated} · ${state.kept.length} kept · ${Sync().dirtyCount(result.store)} dirty`);
     } catch (err) {
       setDriveStatus(err.message || String(err));
       alert(err.message || String(err));
@@ -3765,6 +4098,12 @@
     $('#btn-export').addEventListener('click', exportKept);
     $('#btn-save-drive').addEventListener('click', () => { saveToDrive(); });
     $('#btn-sync-pull').addEventListener('click', () => { pullFromSheet(); });
+    const fmBtn = $('#btn-food-master');
+    if (fmBtn) {
+      const url = window.FOOD_MENUS_CONFIG?.FOOD_MASTER_SHEET_URL
+        || 'https://docs.google.com/spreadsheets/d/1ShKoeUKdthTgd6Y2zmAyNkUiv0wpkqmOyaZ1D_TX7DQ/edit';
+      fmBtn.setAttribute('href', url);
+    }
 
     $('#locker-search')?.addEventListener('input', (e) => {
       state.lockerSearch = e.target.value || '';
@@ -3841,12 +4180,14 @@
     state.type = state.catalog.typeOrder[0];
     state.family = '__all__';
     state.stage = 'all';
+    state.formFilter = '';
     // Default process highlight: ramen noodles (full list still browsable)
     const ramen = P().listProcessOptions(state.processData.catalog, state.processData.byOutput)
       .find((o) => o.output === 'Ramen noodles');
     if (ramen) selectProcess(ramen.id, ramen.output);
 
     renderStageRail();
+    renderFormRail();
     renderTypeRail();
     renderFamilies();
     renderGrid();
