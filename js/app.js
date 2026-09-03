@@ -39,7 +39,8 @@
     fiveStarArt: null,
     hqPlateGen: 0,
     recipeSlots: [],
-    loadedRecipe: null
+    loadedRecipe: null,
+    armedSlotId: null
   };
 
   const FiveStar = () => window.FoodMenusFiveStar;
@@ -158,16 +159,43 @@
     const id = `slot-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const slot = { id, label: cleanLabel, type: type || 'Custom', optionIds: [] };
     state.recipeSlots.push(slot);
+    state.armedSlotId = id;
     renderSlots();
     renderRecipeList(state.selected);
     renderTray();
+    renderGrid();
   }
 
   function removeRecipeSlot(slotId) {
     state.recipeSlots = state.recipeSlots.filter((s) => s.id !== slotId);
+    if (state.armedSlotId === slotId) state.armedSlotId = null;
     renderSlots();
     renderRecipeList(state.selected);
     renderTray();
+    renderGrid();
+  }
+
+  function armRecipeSlot(slotId) {
+    if (!slotId || !state.recipeSlots.some((s) => s.id === slotId)) {
+      state.armedSlotId = null;
+    } else if (state.armedSlotId === slotId) {
+      state.armedSlotId = null;
+    } else {
+      state.armedSlotId = slotId;
+    }
+    renderSlots();
+    renderRecipeList(state.selected);
+    renderTray();
+    renderGrid();
+  }
+
+  function disarmRecipeSlot() {
+    if (!state.armedSlotId) return;
+    state.armedSlotId = null;
+    renderSlots();
+    renderRecipeList(state.selected);
+    renderTray();
+    renderGrid();
   }
 
   function addOptionToSlot(slotId, ing, { moveOffPlate = false } = {}) {
@@ -191,6 +219,11 @@
     renderSlots();
     renderRecipeList(state.selected);
     renderTray();
+  }
+
+  function slotEmptyHint(armed) {
+    if (armed) return 'Tap ingredients below to add';
+    return 'Tap slot, then tap ingredients';
   }
 
   function wireSlotDropTarget(el, slotId) {
@@ -226,32 +259,56 @@
     const el = $('#recipe-slots');
     if (!wrap || !el) return;
     wrap.hidden = state.mode !== 'dish';
+    if (state.armedSlotId && !state.recipeSlots.some((s) => s.id === state.armedSlotId)) {
+      state.armedSlotId = null;
+    }
     const slots = state.recipeSlots;
     el.innerHTML = slots.map((slot) => {
       const opts = (slot.optionIds || []).map((id) => state.byId.get(id)).filter(Boolean);
+      const armed = state.armedSlotId === slot.id;
       return `
-        <div class="recipe-slot" data-slot-id="${esc(slot.id)}" data-drop="slot">
+        <div class="recipe-slot ${armed ? 'armed' : ''}" data-slot-id="${esc(slot.id)}" data-drop="slot" role="button" tabindex="0" aria-pressed="${armed}" aria-label="${esc(slot.label)} slot${armed ? ', armed' : ''}">
           <div class="recipe-slot-head">
-            <span class="recipe-slot-label">${esc(slot.label)}</span>
-            <button type="button" class="recipe-slot-remove" data-remove-slot="${esc(slot.id)}" aria-label="Remove slot">✕</button>
+            <span class="recipe-slot-label">${esc(slot.label)}${armed ? ' · adding' : ''}</span>
+            <div class="recipe-slot-head-actions">
+              ${armed ? `<button type="button" class="recipe-slot-done" data-disarm-slot="${esc(slot.id)}">Done</button>` : ''}
+              <button type="button" class="recipe-slot-remove" data-remove-slot="${esc(slot.id)}" aria-label="Remove slot">✕</button>
+            </div>
           </div>
           <div class="recipe-slot-options">
             ${opts.map((ing) => `
               <button type="button" class="slot-opt-chip" data-slot-id="${esc(slot.id)}" data-opt-id="${esc(ing.id)}" title="${esc(ing.name)}" aria-label="Remove ${esc(ing.name)}">
                 ${artHtml(ing)}
               </button>
-            `).join('') || `<span class="slot-drop-hint">Drop options here</span>`}
+            `).join('') || `<span class="slot-drop-hint">${esc(slotEmptyHint(armed))}</span>`}
           </div>
         </div>`;
     }).join('');
 
     el.querySelectorAll('.recipe-slot').forEach((row) => {
-      wireSlotDropTarget(row, row.dataset.slotId);
+      const slotId = row.dataset.slotId;
+      wireSlotDropTarget(row, slotId);
+      row.addEventListener('click', (e) => {
+        if (e.target.closest('.slot-opt-chip, .recipe-slot-remove, .recipe-slot-done')) return;
+        armRecipeSlot(slotId);
+      });
+      row.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        if (e.target !== row) return;
+        e.preventDefault();
+        armRecipeSlot(slotId);
+      });
     });
     el.querySelectorAll('[data-remove-slot]').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         removeRecipeSlot(btn.dataset.removeSlot);
+      });
+    });
+    el.querySelectorAll('[data-disarm-slot]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        disarmRecipeSlot();
       });
     });
     el.querySelectorAll('.slot-opt-chip').forEach((btn) => {
@@ -725,7 +782,7 @@
     }
     el.hidden = false;
     el.innerHTML = rows.map((ing) => `
-      <li class="recipe-row" data-ing-id="${esc(ing.id)}" draggable="true">
+      <li class="recipe-row ${state.armedSlotId ? 'slot-arm-target' : ''}" data-ing-id="${esc(ing.id)}" draggable="true">
         <span class="recipe-ico">${artHtml(ing)}</span>
         <span class="recipe-qty">${esc(servingLabel(ing))}</span>
         <span class="recipe-name">${esc(ing.name)}</span>
@@ -739,6 +796,11 @@
         e.dataTransfer.effectAllowed = 'move';
       });
       row.addEventListener('dragend', () => row.classList.remove('dragging'));
+      row.addEventListener('click', () => {
+        if (!state.armedSlotId) return;
+        const ing = state.byId.get(row.dataset.ingId);
+        if (ing) addOptionToSlot(state.armedSlotId, ing, { moveOffPlate: true });
+      });
     });
     enhanceArtImages(el);
   }
@@ -912,12 +974,18 @@
     });
     btn.addEventListener('pointerup', () => {
       clear();
-      if (!longFired) addToPlate(ing);
+      if (longFired) return;
+      if (state.armedSlotId && state.mode === 'dish') {
+        // Slot options are recipe metadata — never plate occupancy / Plate full
+        addOptionToSlot(state.armedSlotId, ing, { moveOffPlate: false });
+        return;
+      }
+      addToPlate(ing);
     });
     btn.addEventListener('pointercancel', clear);
     btn.addEventListener('pointerleave', clear);
 
-    // drag onto plate
+    // drag onto plate / slot (desktop)
     btn.addEventListener('dragstart', (e) => {
       clear();
       btn.classList.add('dragging');
@@ -931,10 +999,13 @@
   function renderGrid() {
     const ings = familyIngredients();
     const sel = selectedIds();
+    const armed = Boolean(state.armedSlotId && state.mode === 'dish');
     const emptyMsg = state.lockerSearch.trim()
       ? 'No ingredients match'
       : (state.stage === 'made' ? 'No made ingredients here' : 'Empty family');
-    $('#ingredient-grid').innerHTML = ings.map((ing) => `
+    const grid = $('#ingredient-grid');
+    grid.classList.toggle('slot-arming', armed);
+    grid.innerHTML = ings.map((ing) => `
       <button type="button" class="ing-tile ${sel.has(ing.id) ? 'selected' : ''} ${ing.art ? '' : 'missing-art'} ${isMade(ing) ? 'is-made' : ''}"
         data-id="${esc(ing.id)}" aria-label="${esc(ing.name)}">
         ${isMade(ing) ? '<span class="chain-cue" title="Process chain" aria-hidden="true"></span>' : ''}
@@ -942,11 +1013,11 @@
       </button>
     `).join('') || `<p class="muted" style="grid-column:1/-1;text-align:center">${esc(emptyMsg)}</p>`;
 
-    $('#ingredient-grid').querySelectorAll('.ing-tile').forEach((btn) => {
+    grid.querySelectorAll('.ing-tile').forEach((btn) => {
       const ing = state.byId.get(btn.dataset.id);
       bindTileGestures(btn, ing);
     });
-    enhanceArtImages($('#ingredient-grid'));
+    enhanceArtImages(grid);
   }
 
   function addToPlate(ing) {
@@ -993,7 +1064,9 @@
         </div>
       ` : ''}
     `;
-    $('#detail-toggle').textContent = onPlate ? 'Remove' : 'Add to plate';
+    $('#detail-toggle').textContent = state.armedSlotId
+      ? 'Add to slot'
+      : (onPlate ? 'Remove' : 'Add to plate');
     $('#detail-dialog').showModal();
   }
 
@@ -1025,8 +1098,12 @@
 
     const max = state.catalog.maxDishIngredients || 5;
     const hq = FiveStar()?.isFiveStarQuality(score?.stars?.total, state.fiveStarArt);
-    if (!state.selected.length) $('#tray-hint').textContent = '';
-    else if (!slotsOk && slotCheck?.missingSlots?.length) {
+    const armed = state.recipeSlots.find((s) => s.id === state.armedSlotId);
+    if (armed) {
+      $('#tray-hint').textContent = `Adding to ${armed.label} · tap ingredients below`;
+    } else if (!state.selected.length) {
+      $('#tray-hint').textContent = '';
+    } else if (!slotsOk && slotCheck?.missingSlots?.length) {
       const cue = slotCheck.missingSlots
         .map((s) => S.missingSlotCue(s, state.byId))
         .filter(Boolean)
@@ -2428,6 +2505,7 @@
       state.restaurantId = null;
       state.recipeSlots = [];
       state.loadedRecipe = null;
+      state.armedSlotId = null;
       renderTray();
       renderGrid();
     });
@@ -2521,7 +2599,11 @@
 
     $('#detail-dialog').addEventListener('close', () => {
       if ($('#detail-dialog').returnValue === 'toggle' && state.detailIng) {
-        addToPlate(state.detailIng);
+        if (state.armedSlotId && state.mode === 'dish') {
+          addOptionToSlot(state.armedSlotId, state.detailIng, { moveOffPlate: false });
+        } else {
+          addToPlate(state.detailIng);
+        }
       }
     });
   }
