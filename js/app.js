@@ -409,12 +409,12 @@
       return `<span class="station-glyph ${glyph}" aria-hidden="true"></span>`;
     }
     const art = normalizeArtPath(ing?.art);
-    if (art && !isArtBroken(art)) {
+    if (art && !isArtBroken(art) && !isArtDeleted(art)) {
       const src = resolveArtSrc(art);
       const sizeCls = `art-fit art-${artSizeClass(art)}`;
       return `<img class="${esc((cls ? `${cls} ` : '') + sizeCls)}" src="${esc(src)}" alt="" draggable="false" loading="lazy" decoding="async" data-art="${esc(art)}" />`;
     }
-    if (art && isArtBroken(art)) {
+    if (art && (isArtBroken(art) || isArtDeleted(art))) {
       return `<span class="name-fallback art-broken" title="${esc(art)}">?</span>`;
     }
     return `<span class="name-fallback">${esc(ing?.name || '?')}</span>`;
@@ -425,11 +425,11 @@
     return Boolean(p && state.brokenArt.has(p));
   }
 
-  /** Empty art OR broken/404 art — Gallery Missing set + detail reassign targets. */
+  /** Empty art OR broken/404 art OR client-deleted art — Gallery Missing set + detail reassign targets. */
   function ingredientNeedsArt(ing) {
     if (!ing || ing.isStation) return false;
     const art = normalizeArtPath(ing.art);
-    return !art || isArtBroken(art);
+    return !art || isArtBroken(art) || isArtDeleted(art);
   }
 
   function missingArtIngredients() {
@@ -955,32 +955,63 @@
     })[0];
   }
 
-  /** One locker tile per unique art path; empty-art ingredients stay individual placeholders. */
+  /** One locker tile per food object (shared art / same object key). Empty holes fold into a painted sibling when one exists. */
   function dedupeLockerByArt(ings) {
-    const list = ings || [];
-    const byArt = new Map();
-    list.forEach((ing) => {
-      const art = normalizeArtPath(ing?.art);
-      if (!art) return;
-      let group = byArt.get(art);
-      if (!group) {
-        group = [];
-        byArt.set(art, group);
+    const list = (ings || []).filter(Boolean);
+    const parent = new Map();
+    const find = (k) => {
+      if (!parent.has(k)) parent.set(k, k);
+      const p = parent.get(k);
+      if (p !== k) {
+        const root = find(p);
+        parent.set(k, root);
+        return root;
       }
-      group.push(ing);
+      return k;
+    };
+    const union = (a, b) => {
+      if (!a || !b) return;
+      const ra = find(a);
+      const rb = find(b);
+      if (ra !== rb) parent.set(rb, ra);
+    };
+
+    list.forEach((ing) => {
+      const id = `ing:${ing.id}`;
+      union(id, `title:${String(ing.name || '').trim().toLowerCase()}`);
+      union(id, `obj:${objectKeyFromLabel(ing.name)}`);
+      const art = normalizeArtPath(ing.art);
+      if (art && !isArtDeleted(art)) union(id, `art:${art}`);
+      (ing.aliases || []).forEach((al) => {
+        const a = String(al || '').trim();
+        if (!a) return;
+        union(id, `title:${a.toLowerCase()}`);
+        union(id, `obj:${objectKeyFromLabel(a)}`);
+      });
+    });
+
+    const groups = new Map();
+    list.forEach((ing) => {
+      const root = find(`ing:${ing.id}`);
+      if (!groups.has(root)) groups.set(root, []);
+      groups.get(root).push(ing);
     });
 
     const out = [];
-    const seenArt = new Set();
+    const seen = new Set();
     list.forEach((ing) => {
-      const art = normalizeArtPath(ing?.art);
-      if (!art) {
-        out.push(ing);
-        return;
-      }
-      if (seenArt.has(art)) return;
-      seenArt.add(art);
-      out.push(pickCanonicalLockerIngredient(byArt.get(art), art));
+      const root = find(`ing:${ing.id}`);
+      if (seen.has(root)) return;
+      seen.add(root);
+      const group = groups.get(root) || [ing];
+      const withArt = group.filter((g) => artPathUsable(g.art));
+      const withAnyArt = group.filter((g) => normalizeArtPath(g.art) && !isArtDeleted(g.art));
+      const pool = withArt.length ? withArt : (withAnyArt.length ? withAnyArt : group);
+      const face = pool.slice().sort((a, b) => (
+        scoreFaceCandidate({ art: b.art, label: b.name, fromCatalog: true })
+        - scoreFaceCandidate({ art: a.art, label: a.name, fromCatalog: true })
+      ))[0];
+      out.push(face);
     });
     return out;
   }
@@ -1219,14 +1250,100 @@
     return chips.length ? `<div class="detail-meta">${chips.join('')}</div>` : '';
   }
 
+  /** Catalog names + paintings for this food object (detail-only; grid stays one tile). */
+  function resolveGalleryObject(ing) {
+    if (ing?._galleryObject) return ing._galleryObject;
+    const items = paintedGalleryItems();
+    const art = normalizeArtPath(ing?.art);
+    const key = objectKeyFromLabel(ing?.name);
+    return items.find((it) => (
+      it.objectKey === key
+      || (art && normalizeArtPath(it.art) === art)
+      || (it.ingredients || []).some((x) => x.id === ing?.id)
+      || (it.names || []).some((n) => String(n).toLowerCase() === String(ing?.name || '').toLowerCase())
+    )) || null;
+  }
+
+  function detailVariantsHtml(ing) {
+    const obj = resolveGalleryObject(ing);
+    const paintings = obj?.paintings || [];
+    const names = obj?.names || sharedArtNames(ing);
+    const holes = obj?.holes || [];
+    if (paintings.length <= 1 && names.length <= 1 && !holes.length) return '';
+
+    const paintRows = paintings.map((p) => {
+      const status = !p.usable ? (p.broken ? 'broken' : 'unavailable') : (normalizeArtPath(p.art) === normalizeArtPath(ing?.art || obj?.art) ? 'grid face' : 'alt');
+      const thumb = p.usable
+        ? `<img class="art-fit" src="${esc(resolveArtSrc(p.art))}" alt="" draggable="false" data-art="${esc(p.art)}" />`
+        : `<span class="name-fallback art-broken">?</span>`;
+      const useBtn = p.usable
+        ? `<button type="button" class="detail-variant-use" data-art="${esc(p.art)}" data-object-key="${esc(obj?.objectKey || '')}">Use as grid picture</button>`
+        : '';
+      return `<div class="detail-variant-row" data-art="${esc(p.art)}">
+        <div class="detail-variant-thumb">${thumb}</div>
+        <div class="detail-variant-copy">
+          <div class="detail-variant-name">${esc(p.label)}</div>
+          <div class="detail-variant-meta">${esc(status)}</div>
+          ${useBtn}
+        </div>
+      </div>`;
+    }).join('');
+
+    const nameList = names.length
+      ? `<p class="detail-shared">Names on this food:
+          ${names.map((n) => esc(n)).join(', ')}
+        </p>`
+      : '';
+    const holeList = holes.length
+      ? `<p class="detail-shared">Needs a picture:
+          ${holes.map((h) => esc(h.name)).join(', ')}
+        </p>`
+      : '';
+
+    return `
+      <div class="detail-variants">
+        <h3>Pictures for this food</h3>
+        ${nameList}
+        ${holeList}
+        <div class="detail-variant-list">${paintRows || '<p class="detail-reassign-empty">No paintings yet.</p>'}</div>
+      </div>`;
+  }
+
+  function sharedArtNames(ing) {
+    const obj = ing?._galleryObject;
+    if (obj?.names?.length) return obj.names.slice();
+    const art = normalizeArtPath(ing?.art);
+    const names = [];
+    const seen = new Set();
+    const push = (n) => {
+      const key = String(n || '').trim().toLowerCase();
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      names.push(String(n).trim());
+    };
+    if (art) {
+      (state.catalog.ingredients || []).forEach((other) => {
+        if (normalizeArtPath(other.art) === art) push(other.name);
+      });
+    }
+    const key = objectKeyFromLabel(ing?.name);
+    if (key) {
+      (state.catalog.ingredients || []).forEach((other) => {
+        if (objectKeyFromLabel(other.name) === key) push(other.name);
+      });
+    }
+    if (!names.length) push(ing?.name);
+    return names;
+  }
+
   function detailReassignHtml(ing) {
     const artPath = normalizeArtPath(ing?.art);
-    if (!artPath || isArtBroken(artPath)) return '';
+    if (!artPath || isArtBroken(artPath) || isArtDeleted(artPath)) return '';
     const missing = missingArtIngredients().filter((m) => m.id !== ing.id);
     const list = missing.length
       ? missing.map((m) => {
         const bits = [m.uiType, m.uiFamily || m.category].filter(Boolean).join(' · ');
-        const why = !normalizeArtPath(m.art) ? 'empty' : 'broken';
+        const why = !normalizeArtPath(m.art) ? 'empty' : (isArtDeleted(m.art) ? 'deleted' : 'broken');
         return `<button type="button" class="detail-reassign-btn" data-missing-id="${esc(m.id)}">
           ${esc(m.name)}
           <span class="meta">${esc(bits || why)} · ${esc(why)}</span>
@@ -1240,17 +1357,36 @@
       </div>`;
   }
 
+  function detailDeleteHtml(ing) {
+    const artPath = normalizeArtPath(ing?.art);
+    if (!artPath || isArtDeleted(artPath)) return '';
+    return `
+      <div class="detail-delete">
+        <button type="button" class="detail-delete-start" id="detail-delete-start">Delete picture</button>
+        <div class="detail-delete-confirm" id="detail-delete-confirm" hidden>
+          <p class="detail-delete-warn">Permanently hide this picture on this device. Shared names become Missing. Close stays safe.</p>
+          <button type="button" class="detail-delete-confirm-btn" id="detail-delete-confirm-btn">Permanently delete</button>
+          <button type="button" class="detail-delete-cancel-btn" id="detail-delete-cancel-btn">Cancel</button>
+        </div>
+      </div>`;
+  }
+
   function openDetail(ing, { forceChain = false } = {}) {
+    const obj = resolveGalleryObject(ing) || ing?._galleryObject || null;
+    if (obj && !ing._galleryObject) {
+      ing = { ...ing, art: obj.art || ing.art, name: obj.title || ing.name, _galleryObject: obj };
+    }
     state.detailIng = ing;
     const onPlate = ing?.id && selectedIds().has(ing.id);
     const inCatalog = Boolean(ing?.id && state.byId.has(ing.id));
     const chain = resolveChainIngs(ing);
     const showChain = forceChain || isMade(ing) || chain.length > 1;
+    const displayName = obj?.title || sharedArtNames(ing)[0] || ing?.name || '';
 
     $('#detail-body').innerHTML = `
       <div class="detail-hero">
         <div class="big-ico">${artHtml(ing)}</div>
-        <p class="detail-name">${esc(ing?.name || '')}</p>
+        <p class="detail-name">${esc(displayName)}</p>
         ${detailMetaChipsHtml(ing)}
       </div>
       ${showChain ? `
@@ -1261,7 +1397,9 @@
           `).join('')}
         </div>
       ` : ''}
+      ${detailVariantsHtml(ing)}
       ${detailReassignHtml(ing)}
+      ${detailDeleteHtml(ing)}
     `;
 
     const toggle = $('#detail-toggle');
@@ -1280,6 +1418,51 @@
         assignArtToIngredient(missingId, artPath);
         $('#detail-dialog')?.close();
       });
+    });
+
+    $('#detail-body').querySelectorAll('.detail-variant-use').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const artPath = btn.getAttribute('data-art');
+        const objectKey = btn.getAttribute('data-object-key') || objectKeyFromLabel(displayName);
+        if (!artPath || !objectKey) return;
+        setFaceArtForObject(objectKey, artPath);
+        // Prefer assigning the face onto the canonical catalog row when present
+        const canonical = obj?.faceIng || obj?.ingredients?.[0];
+        if (canonical?.id && state.byId.has(canonical.id)) {
+          // Keep other catalog rows' own arts; only update face preference + display
+          // If canonical has empty/broken art, fill it with the chosen painting.
+          if (ingredientNeedsArt(canonical)) {
+            assignArtToIngredient(canonical.id, artPath);
+          } else {
+            renderGrid();
+            renderGallery();
+          }
+        } else {
+          renderGrid();
+          renderGallery();
+        }
+        const next = resolveGalleryObject({ ...ing, name: displayName, art: artPath, _galleryObject: null });
+        openDetail(ingredientForGalleryItem(next) || { ...ing, art: artPath }, { forceChain });
+      });
+    });
+
+    const deleteStart = $('#detail-delete-start');
+    const deleteConfirmWrap = $('#detail-delete-confirm');
+    const deleteConfirmBtn = $('#detail-delete-confirm-btn');
+    const deleteCancelBtn = $('#detail-delete-cancel-btn');
+    deleteStart?.addEventListener('click', () => {
+      if (deleteConfirmWrap) deleteConfirmWrap.hidden = false;
+      if (deleteStart) deleteStart.hidden = true;
+    });
+    deleteCancelBtn?.addEventListener('click', () => {
+      if (deleteConfirmWrap) deleteConfirmWrap.hidden = true;
+      if (deleteStart) deleteStart.hidden = false;
+    });
+    deleteConfirmBtn?.addEventListener('click', () => {
+      const artPath = normalizeArtPath(ing.art);
+      if (!artPath) return;
+      permanentlyDeleteArt(artPath);
+      $('#detail-dialog')?.close();
     });
 
     enhanceArtImages($('#detail-body'));
@@ -1848,6 +2031,7 @@
   }
 
   const LOCAL_ART_KEY = 'food-menus-local-art-v1';
+  const DELETED_ART_KEY = 'food-menus-deleted-art-v1';
 
   function loadLocalArtStore() {
     try {
@@ -1861,10 +2045,29 @@
     localStorage.setItem(LOCAL_ART_KEY, JSON.stringify(map || {}));
   }
 
+  function loadDeletedArtSet() {
+    try {
+      const arr = JSON.parse(localStorage.getItem(DELETED_ART_KEY) || '[]');
+      return new Set((Array.isArray(arr) ? arr : []).map(normalizeArtPath).filter(Boolean));
+    } catch {
+      return new Set();
+    }
+  }
+
+  function saveDeletedArtSet(set) {
+    localStorage.setItem(DELETED_ART_KEY, JSON.stringify([...set]));
+  }
+
+  function isArtDeleted(path) {
+    const p = normalizeArtPath(path);
+    return Boolean(p && loadDeletedArtSet().has(p));
+  }
+
   /** Resolve local-art/* keys (and data:/blob: URLs) for <img src>. */
   function resolveArtSrc(path) {
     const p = normalizeArtPath(path);
     if (!p) return '';
+    if (isArtDeleted(p)) return '';
     if (/^(data:|blob:)/i.test(p)) return p;
     const local = loadLocalArtStore()[p];
     return local || p;
@@ -1923,7 +2126,7 @@
     const out = [];
     (state.artFiles || []).forEach((path) => {
       const p = normalizeArtPath(path);
-      if (!p || used.has(p) || seen.has(p)) return;
+      if (!p || used.has(p) || seen.has(p) || isArtDeleted(p)) return;
       seen.add(p);
       out.push(p);
     });
@@ -1981,6 +2184,7 @@
   async function ensureArtFiles() {
     if (state.artFiles.length) {
       mergeLocalArtIntoInventory();
+      purgeDeletedFromArtFiles();
       return state.artFiles;
     }
     try {
@@ -1993,6 +2197,7 @@
       }
     } catch { /* inventory optional */ }
     mergeLocalArtIntoInventory();
+    purgeDeletedFromArtFiles();
     return state.artFiles;
   }
 
@@ -2000,8 +2205,58 @@
     const local = loadLocalArtStore();
     Object.keys(local).forEach((path) => {
       const p = normalizeArtPath(path);
-      if (p && !state.artFiles.includes(p)) state.artFiles.push(p);
+      if (p && !isArtDeleted(p) && !state.artFiles.includes(p)) state.artFiles.push(p);
     });
+  }
+
+  function purgeDeletedFromArtFiles() {
+    state.artFiles = (state.artFiles || []).filter((p) => !isArtDeleted(p));
+  }
+
+  /** Unassign path everywhere, denylist it, drop from inventory — no git-rm. */
+  function permanentlyDeleteArt(artPath) {
+    const path = normalizeArtPath(artPath);
+    if (!path) return false;
+
+    (state.catalog.ingredients || []).forEach((ing) => {
+      if (normalizeArtPath(ing.art) === path) {
+        ing.art = '';
+        persistIngredientArt(ing);
+      }
+    });
+
+    state.artFiles = (state.artFiles || []).filter((p) => normalizeArtPath(p) !== path);
+
+    const deleted = loadDeletedArtSet();
+    deleted.add(path);
+    saveDeletedArtSet(deleted);
+
+    const local = loadLocalArtStore();
+    if (Object.prototype.hasOwnProperty.call(local, path)) {
+      delete local[path];
+      try { saveLocalArtStore(local); } catch { /* ignore quota */ }
+    }
+
+    state.brokenArt.delete(path);
+    rebuildIndexes();
+    renderGrid();
+    renderTray();
+    renderGallery();
+    return true;
+  }
+
+  /** If Pull/refresh reattaches a denylisted path, clear it again so Missing stays honest. */
+  function applyDeletedArtDenylistToCatalog() {
+    let changed = false;
+    (state.catalog.ingredients || []).forEach((ing) => {
+      const art = normalizeArtPath(ing.art);
+      if (!art || !isArtDeleted(art)) return;
+      ing.art = '';
+      persistIngredientArt(ing);
+      changed = true;
+    });
+    purgeDeletedFromArtFiles();
+    return changed;
   }
 
   function readFileAsDataUrl(file) {
@@ -2126,75 +2381,295 @@
     return ing;
   }
 
+  function objectKeyFromLabel(label) {
+    let s = String(label || '')
+      .toLowerCase()
+      .replace(/½/g, ' half ')
+      .replace(/[^a-z0-9\s]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!s) return '';
+    const strip = new Set([
+      'wedges', 'wedge', 'slices', 'slice', 'halves', 'half',
+      'chopped', 'bunch', 'unit', 'whole', 'cracked', 'peeled',
+      'diced', 'minced', 'grated', 'flakes', 'flake', 'strips', 'strip',
+      'boiled', 'seasoned', 'dry', 'aged', 'dried', 'fresh', 'raw',
+      'streusel', 'piece', 'pieces', 'cut', 'cuts'
+    ]);
+    const tokens = s.split(' ').filter(Boolean);
+    const kept = tokens.filter((t) => !strip.has(t));
+    let core = (kept.length ? kept : tokens).join('');
+    core = core.replace(/chile/g, 'chili');
+    if (core.endsWith('ies') && core.length > 4) core = `${core.slice(0, -3)}y`;
+    else if (core.endsWith('ses') && core.length > 4) core = core.slice(0, -2);
+    else if (core.endsWith('s') && !core.endsWith('ss') && !core.endsWith('us') && core.length > 3) {
+      core = core.slice(0, -1);
+    }
+    return core;
+  }
+
+  function isFormishLabel(label) {
+    return /\b(wedges?|slices?|halves?|chopped|flakes?|strips?|streusel|boiled|seasoned|½)\b/i.test(String(label || ''))
+      || /^½/.test(String(label || ''));
+  }
+
+  function artPathUsable(path) {
+    const p = normalizeArtPath(path);
+    return Boolean(p && !isArtBroken(p) && !isArtDeleted(p));
+  }
+
+  const FACE_ART_KEY = 'food-menus-face-art-v1';
+
+  function loadFaceArtMap() {
+    try {
+      return JSON.parse(localStorage.getItem(FACE_ART_KEY) || '{}') || {};
+    } catch {
+      return {};
+    }
+  }
+
+  function saveFaceArtMap(map) {
+    localStorage.setItem(FACE_ART_KEY, JSON.stringify(map || {}));
+  }
+
+  function setFaceArtForObject(objectKey, artPath) {
+    const key = String(objectKey || '').trim();
+    const path = normalizeArtPath(artPath);
+    if (!key || !path) return;
+    const map = loadFaceArtMap();
+    map[key] = path;
+    saveFaceArtMap(map);
+  }
+
+  function scoreFaceCandidate({ art, label, fromCatalog }) {
+    let score = 0;
+    if (artPathUsable(art)) score += 100;
+    else if (normalizeArtPath(art) && !isArtDeleted(art)) score += 10; // broken but present
+    if (!isFormishLabel(label)) score += 25;
+    const stemTitle = humanizeArtStem(artStem(art)).toLowerCase();
+    const name = String(label || '').trim().toLowerCase();
+    if (stemTitle && name && (name === stemTitle || stemTitle.includes(name) || name.includes(stemTitle.split(' ')[0] || ''))) {
+      score += 15;
+    }
+    if (fromCatalog) score += 5;
+    score -= String(label || '').length * 0.01;
+    return score;
+  }
+
+  function pickObjectTitle(ings, fileLabels, faceArt) {
+    const labels = [];
+    (ings || []).forEach((ing) => { if (ing?.name) labels.push(String(ing.name)); });
+    (fileLabels || []).forEach((n) => { if (n) labels.push(String(n)); });
+    if (!labels.length) return humanizeArtStem(artStem(faceArt)) || 'Untitled';
+    const stemTitle = humanizeArtStem(artStem(faceArt)).toLowerCase();
+    const ranked = labels.slice().sort((a, b) => {
+      const sa = scoreFaceCandidate({ art: faceArt, label: a, fromCatalog: true });
+      const sb = scoreFaceCandidate({ art: faceArt, label: b, fromCatalog: true });
+      if (sb !== sa) return sb - sa;
+      return a.localeCompare(b);
+    });
+    if (stemTitle) {
+      const exact = ranked.find((n) => n.toLowerCase() === stemTitle);
+      if (exact) return exact;
+    }
+    const nonForm = ranked.find((n) => !isFormishLabel(n));
+    return nonForm || ranked[0];
+  }
+
+  /**
+   * Painted / locker: one tile per food object.
+   * Unions by shared art path, shared display title, and object key (lemon ≈ lemon wedges).
+   * Extra paintings and empty/broken holes fold into details — never xN inventory labels.
+   */
   function paintedGalleryItems() {
-    const byPath = new Map();
-    const seenNameArt = new Set();
+    const parent = new Map();
+    const find = (k) => {
+      if (!parent.has(k)) parent.set(k, k);
+      const p = parent.get(k);
+      if (p !== k) {
+        const root = find(p);
+        parent.set(k, root);
+        return root;
+      }
+      return k;
+    };
+    const union = (a, b) => {
+      if (!a || !b) return;
+      const ra = find(a);
+      const rb = find(b);
+      if (ra !== rb) parent.set(rb, ra);
+    };
+
+    const nodes = [];
 
     (state.catalog.ingredients || []).forEach((ing) => {
-      const art = normalizeArtPath(ing.art);
-      if (!art) return;
-      const nameArtKey = `${String(ing.name || '').toLowerCase()}|${art}`;
-      if (seenNameArt.has(nameArtKey)) return; // drop duplicate name+art catalog rows
-      seenNameArt.add(nameArtKey);
-
-      let group = byPath.get(art);
-      if (!group) {
-        group = {
-          art,
-          names: [],
-          ingredients: [],
-          uiType: ing.uiType || ing.group || 'Other',
-          uiFamily: ing.uiFamily || ing.category || '',
-          category: ing.category || '',
-          group: ing.group || '',
-          type: ing.type || ''
-        };
-        byPath.set(art, group);
-      }
-      group.names.push(ing.name);
-      group.ingredients.push(ing);
-    });
-
-    const items = [];
-    byPath.forEach((group) => {
-      const names = group.names;
-      const title = names.length === 1
-        ? names[0]
-        : `${names[0]} x${names.length}`;
-      items.push({
-        kind: 'named',
-        id: `art:${group.art}`,
+      if (!ing || ing.isStation) return;
+      const art = isArtDeleted(ing.art) ? '' : normalizeArtPath(ing.art);
+      const title = String(ing.name || '').trim();
+      if (!title) return;
+      const id = `ing:${ing.id}`;
+      nodes.push({
+        id,
+        kind: 'ing',
+        ing,
         title,
-        art: group.art,
-        uiType: group.uiType,
-        uiFamily: group.uiFamily,
-        category: group.category,
-        group: group.group,
-        type: group.type,
-        untitled: false,
-        names,
-        ingredients: group.ingredients
+        art,
+        uiType: ing.uiType || ing.group || 'Other',
+        uiFamily: ing.uiFamily || ing.category || '',
+        category: ing.category || '',
+        group: ing.group || '',
+        type: ing.type || ''
       });
+      const keys = [id, `title:${title.toLowerCase()}`, `obj:${objectKeyFromLabel(title)}`];
+      if (art) keys.push(`art:${art}`);
+      (ing.aliases || []).forEach((al) => {
+        const a = String(al || '').trim();
+        if (!a) return;
+        keys.push(`title:${a.toLowerCase()}`);
+        keys.push(`obj:${objectKeyFromLabel(a)}`);
+      });
+      for (let i = 1; i < keys.length; i++) union(keys[0], keys[i]);
     });
 
-    // Named unused pool files (Apple pie slice, Bacon, Avocado, …) live on Painted
     namedUnusedArtFiles().forEach((path) => {
-      if (byPath.has(path)) return;
-      const stem = artStem(path);
-      const title = humanizeArtStem(stem);
-      const meta = inferUiMetaFromStem(stem);
-      items.push({
-        kind: 'named-file',
-        id: `file:${path}`,
+      const art = normalizeArtPath(path);
+      if (!art || isArtDeleted(art)) return;
+      const title = humanizeArtStem(artStem(art));
+      const id = `file:${art}`;
+      const meta = inferUiMetaFromStem(artStem(art));
+      nodes.push({
+        id,
+        kind: 'file',
         title,
-        art: path,
+        art,
         uiType: meta.type === 'Untitled' ? 'Other' : meta.type,
         uiFamily: meta.family || 'Extras',
         category: '',
         group: '',
-        type: '',
+        type: ''
+      });
+      union(id, `title:${title.toLowerCase()}`);
+      union(id, `obj:${objectKeyFromLabel(title)}`);
+      union(id, `art:${art}`);
+    });
+
+    const groups = new Map();
+    nodes.forEach((node) => {
+      const root = find(node.id);
+      let g = groups.get(root);
+      if (!g) {
+        g = {
+          root,
+          ingredients: [],
+          files: [],
+          arts: new Set(),
+          titles: [],
+          uiType: node.uiType,
+          uiFamily: node.uiFamily,
+          category: node.category,
+          group: node.group,
+          type: node.type
+        };
+        groups.set(root, g);
+      }
+      if (node.kind === 'ing') g.ingredients.push(node.ing);
+      else g.files.push({ path: node.art, title: node.title });
+      if (node.art) g.arts.add(node.art);
+      g.titles.push(node.title);
+      if (!g.uiFamily && node.uiFamily) g.uiFamily = node.uiFamily;
+      if (!g.uiType || g.uiType === 'Other') g.uiType = node.uiType || g.uiType;
+      if (!g.category && node.category) g.category = node.category;
+    });
+
+    const faceMap = loadFaceArtMap();
+    const items = [];
+
+    groups.forEach((g) => {
+      const arts = [...g.arts].filter((p) => p && !isArtDeleted(p));
+      // Painted only shows objects that have at least one art path (usable or broken)
+      if (!arts.length) return;
+
+      const candidates = [];
+      g.ingredients.forEach((ing) => {
+        const art = normalizeArtPath(ing.art);
+        if (!art || isArtDeleted(art)) return;
+        candidates.push({ art, label: ing.name, fromCatalog: true, ing });
+      });
+      g.files.forEach((f) => {
+        candidates.push({ art: f.path, label: f.title, fromCatalog: false });
+      });
+      if (!candidates.length) return;
+
+      const objKey = objectKeyFromLabel(pickObjectTitle(g.ingredients, g.files.map((f) => f.title), arts[0]))
+        || objectKeyFromLabel(g.titles[0]);
+      const preferred = normalizeArtPath(faceMap[objKey]);
+      let face = null;
+      if (preferred && arts.includes(preferred) && artPathUsable(preferred)) {
+        face = candidates.find((c) => normalizeArtPath(c.art) === preferred) || null;
+      }
+      if (!face) {
+        face = candidates.slice().sort((a, b) => scoreFaceCandidate(b) - scoreFaceCandidate(a))[0];
+      }
+      const faceArt = normalizeArtPath(face.art);
+      const title = pickObjectTitle(g.ingredients, g.files.map((f) => f.title), faceArt);
+      const names = [];
+      const seenName = new Set();
+      g.ingredients.forEach((ing) => {
+        const n = String(ing.name || '').trim();
+        const k = n.toLowerCase();
+        if (!n || seenName.has(k)) return;
+        seenName.add(k);
+        names.push(n);
+      });
+      g.files.forEach((f) => {
+        const n = String(f.title || '').trim();
+        const k = n.toLowerCase();
+        if (!n || seenName.has(k)) return;
+        seenName.add(k);
+        names.push(n);
+      });
+
+      // Collect every distinct painting for details
+      const paintings = [];
+      const seenArt = new Set();
+      const pushPainting = (art, label, ing) => {
+        const p = normalizeArtPath(art);
+        if (!p || isArtDeleted(p) || seenArt.has(p)) return;
+        seenArt.add(p);
+        paintings.push({
+          art: p,
+          label: label || humanizeArtStem(artStem(p)),
+          ingId: ing?.id || '',
+          usable: artPathUsable(p),
+          broken: isArtBroken(p)
+        });
+      };
+      candidates
+        .slice()
+        .sort((a, b) => scoreFaceCandidate(b) - scoreFaceCandidate(a))
+        .forEach((c) => pushPainting(c.art, c.label, c.ing));
+
+      // Empty/broken catalog holes for this object (no art path)
+      const holes = g.ingredients.filter((ing) => ingredientNeedsArt(ing));
+
+      items.push({
+        kind: 'object',
+        id: `obj:${objKey || root}`,
+        objectKey: objKey || root,
+        title,
+        art: faceArt,
+        uiType: g.uiType || 'Other',
+        uiFamily: g.uiFamily || g.category || 'Extras',
+        category: g.category || '',
+        group: g.group || '',
+        type: g.type || '',
         untitled: false,
-        names: [title]
+        names,
+        ingredients: g.ingredients,
+        files: g.files,
+        paintings,
+        holes,
+        faceIng: face.ing || g.ingredients[0] || null
       });
     });
 
@@ -2216,6 +2691,30 @@
 
   function ingredientForGalleryItem(it) {
     if (!it) return null;
+    if (it.kind === 'object') {
+      const base = it.faceIng || it.ingredients?.[0];
+      if (base) {
+        return {
+          ...base,
+          art: it.art || base.art,
+          name: it.title || base.name,
+          _galleryObject: it
+        };
+      }
+      return {
+        id: it.id,
+        name: it.title,
+        art: it.art,
+        uiType: it.uiType || '',
+        uiFamily: it.uiFamily || 'Extras',
+        group: it.group || '',
+        category: it.category || '',
+        type: it.type || '',
+        chain: [it.title],
+        source: 'gallery-file',
+        _galleryObject: it
+      };
+    }
     if (it.kind === 'named' && it.ingredients?.length) {
       return it.ingredients[0];
     }
@@ -2474,6 +2973,7 @@
         return;
       }
       Sync().applyIngredientRowsToCatalog(state.catalog, result.store.ingredients, result.store.assets);
+      applyDeletedArtDenylistToCatalog();
       rebuildIndexes();
       // Merge dishes from sheet into kept
       const sheetKept = Sync().keptFromStore(result.store).map((d) => ({
@@ -2951,6 +3451,7 @@
       tryPull: Sync().hasClientId()
     });
     await ensureArtFiles();
+    applyDeletedArtDenylistToCatalog();
     rebuildIndexes();
     loadKept();
     state.kept = state.kept.map((d) => ({
