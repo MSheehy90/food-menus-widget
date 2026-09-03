@@ -1622,7 +1622,8 @@
     });
 
     enhanceArtImages($('#detail-body'));
-    $('#detail-dialog').showModal();
+    const dlg = $('#detail-dialog');
+    if (!dlg.open) dlg.showModal();
   }
 
   function renderTray() {
@@ -3231,9 +3232,9 @@
         const objectKey = row.getAttribute('data-object-key') || '';
         const label = row.getAttribute('data-label') || '';
         const it = painted.find((obj) =>
-          obj.objectKey === objectKey
-          || (obj.paintings || []).some((p) => normalizeArtPath(p.art) === art)
+          (obj.paintings || []).some((p) => normalizeArtPath(p.art) === art)
           || normalizeArtPath(obj.art) === art
+          || obj.objectKey === objectKey
         ) || {
           kind: 'named-file',
           id: `flag:${art}`,
