@@ -402,6 +402,71 @@
       "file": "assets/dishes/5star/tiles/hq-73.png",
       "name": "hq-73",
       "index": 73
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-74.png",
+      "name": "hq-74",
+      "index": 74
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-75.png",
+      "name": "hq-75",
+      "index": 75
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-76.png",
+      "name": "hq-76",
+      "index": 76
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-77.png",
+      "name": "hq-77",
+      "index": 77
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-78.png",
+      "name": "hq-78",
+      "index": 78
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-79.png",
+      "name": "hq-79",
+      "index": 79
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-80.png",
+      "name": "hq-80",
+      "index": 80
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-81.png",
+      "name": "hq-81",
+      "index": 81
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-82.png",
+      "name": "hq-82",
+      "index": 82
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-83.png",
+      "name": "hq-83",
+      "index": 83
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-84.png",
+      "name": "hq-84",
+      "index": 84
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-85.png",
+      "name": "hq-85",
+      "index": 85
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-86.png",
+      "name": "hq-86",
+      "index": 86
     }
   ],
   "produce": [
