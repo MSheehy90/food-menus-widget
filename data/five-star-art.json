@@ -467,6 +467,21 @@
       "file": "assets/dishes/5star/tiles/hq-86.png",
       "name": "hq-86",
       "index": 86
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-87.png",
+      "name": "hq-87",
+      "index": 87
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-88.png",
+      "name": "hq-88",
+      "index": 88
+    },
+    {
+      "file": "assets/dishes/5star/tiles/hq-89.png",
+      "name": "hq-89",
+      "index": 89
     }
   ],
   "produce": [
