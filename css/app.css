@@ -998,6 +998,9 @@ button.slot-opt-chip {
   color: var(--ink);
   font-size: 0.58rem;
   font-weight: 700;
+  -webkit-touch-callout: default;
+  user-select: text;
+  -webkit-user-select: text;
 }
 .gal-new-name::placeholder {
   color: var(--dim);

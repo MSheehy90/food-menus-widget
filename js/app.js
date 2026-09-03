@@ -1025,6 +1025,8 @@
     let longFired = false;
     let lastTapAt = 0;
     let singleTimer = null;
+    // Match typical OS double-click (~500ms) so delayed single-tap cannot race dblclick.
+    const TAP_GAP_MS = 500;
 
     const clearPress = () => {
       if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
@@ -1037,6 +1039,7 @@
     );
 
     el.addEventListener('contextmenu', (e) => {
+      if (blockedTarget(e.target)) return;
       e.preventDefault();
     });
 
@@ -1057,7 +1060,7 @@
       if (longFired) return;
       if (blockedTarget(e.target)) return;
       const now = Date.now();
-      if (lastTapAt && now - lastTapAt < 350) {
+      if (lastTapAt && now - lastTapAt < TAP_GAP_MS) {
         lastTapAt = 0;
         clearSingle();
         openFn();
@@ -1069,7 +1072,7 @@
       singleTimer = setTimeout(() => {
         singleTimer = null;
         onSingleTap();
-      }, 350);
+      }, TAP_GAP_MS);
     });
 
     el.addEventListener('pointercancel', () => {
@@ -1078,12 +1081,15 @@
     });
     el.addEventListener('pointerleave', clearPress);
 
+    // Prefer the TAP_GAP_MS double-tap path; only open here if detail is not already open
+    // (avoids InvalidStateError from a second showModal after a fast double-tap).
     el.addEventListener('dblclick', (e) => {
       if (blockedTarget(e.target)) return;
       e.preventDefault();
       clearPress();
       clearSingle();
       lastTapAt = 0;
+      if ($('#detail-dialog')?.open) return;
       openFn();
     });
 
@@ -1278,7 +1284,8 @@
         const artPath = normalizeArtPath(ing.art);
         if (!missingId || !artPath) return;
         assignArtToIngredient(missingId, artPath);
-        $('#detail-dialog')?.close();
+        // Pass '' so a prior Add/Remove ('toggle') does not stick and plate on close.
+        $('#detail-dialog')?.close('');
       });
     });
 
