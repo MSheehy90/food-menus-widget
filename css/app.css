@@ -787,8 +787,12 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   gap: 0.18rem;
 }
 .gal-tile.untitled .gal-title {
-  color: #f0c27a;
+  color: var(--ink);
   max-height: 2.6em;
+}
+/* Only generic hq-## codes keep the gold untitled cue + accent title */
+.gal-tile.untitled.generic-id .gal-title {
+  color: #f0c27a;
 }
 .gal-tile .gal-untitled-tag {
   display: block;
@@ -799,6 +803,9 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   color: #f0c27a;
   opacity: 0.95;
   margin-bottom: 0.05rem;
+}
+.gal-tile.untitled.named-stem .gal-untitled-tag {
+  display: none;
 }
 .gal-name-select,
 .gal-new-name {
