@@ -269,3 +269,6 @@ assets/dishes/5star/tiles/hq-83.png
 assets/dishes/5star/tiles/hq-84.png
 assets/dishes/5star/tiles/hq-85.png
 assets/dishes/5star/tiles/hq-86.png
+assets/dishes/5star/tiles/hq-87.png
+assets/dishes/5star/tiles/hq-88.png
+assets/dishes/5star/tiles/hq-89.png
