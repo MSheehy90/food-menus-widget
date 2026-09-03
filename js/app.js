@@ -37,12 +37,22 @@
     processSlotFocus: 0,
     stationFilter: null,
     fiveStarArt: null,
-    hqPlateGen: 0
+    hqPlateGen: 0,
+    recipeSlots: [],
+    loadedRecipe: null
   };
 
   const FiveStar = () => window.FoodMenusFiveStar;
 
   const $ = (sel, root = document) => root.querySelector(sel);
+
+  const SLOT_TYPES = [
+    { type: 'Vegetable', label: 'Vegetable' },
+    { type: 'Herb', label: 'Herb' },
+    { type: 'Garnish', label: 'Garnish' },
+    { type: 'Protein', label: 'Protein' },
+    { type: 'Carb', label: 'Carb' }
+  ];
 
   const RESTAURANTS = [
     { id: 'taqueria', name: 'Taqueria' },
@@ -83,6 +93,174 @@
       const d = cookOrderRank(a) - cookOrderRank(b);
       return d || String(a.name).localeCompare(String(b.name));
     });
+  }
+
+  function normalizeRecipeSlots(slots) {
+    return (slots || []).map((s, idx) => ({
+      id: s.id || `slot-${idx}-${Date.now()}`,
+      label: s.label || s.type || 'Slot',
+      type: s.type || s.label || 'Custom',
+      optionIds: [...new Set((s.optionIds || []).filter(Boolean))]
+    }));
+  }
+
+  function corePlateIngredients(ingredients) {
+    return S.recipeCores(ingredients || state.selected, state.recipeSlots);
+  }
+
+  function plateSatisfiesCurrentRecipe() {
+    const slots = normalizeRecipeSlots(state.recipeSlots);
+    const hasSlotOpts = slots.some((s) => (s.optionIds || []).length);
+    if (!hasSlotOpts) return null;
+    // Loaded kept recipe already had slots → recognize against its cores + current slot defs
+    if (state.loadedRecipe?.slots?.some((s) => (s.optionIds || []).length)) {
+      const cores = S.recipeCores(
+        hydrateIngredients(state.loadedRecipe.ingredients || []),
+        slots
+      );
+      return S.satisfiesRecipe(state.selected, { ingredients: cores, slots });
+    }
+    // Authoring new slots on a plate: cores are non-option plate items (always present);
+    // Create dish is gated by covering each non-empty slot.
+    return S.satisfiesRecipe(state.selected, {
+      ingredients: corePlateIngredients(state.selected),
+      slots
+    });
+  }
+
+  function substituteGroupMembers(ing) {
+    if (!ing || !state.catalog?.substituteGroups) return [];
+    const groups = state.catalog.substituteGroups;
+    const name = String(ing.name || '').toLowerCase();
+    const out = [];
+    Object.values(groups).forEach((g) => {
+      const members = g.members || [];
+      if (!members.some((m) => String(m).toLowerCase() === name)) return;
+      members.forEach((m) => {
+        const hit = state.byName.get(String(m).toLowerCase());
+        if (hit) out.push(hit);
+      });
+    });
+    return out;
+  }
+
+  function seedSlotFromSubstitutes(slot, seedIng) {
+    if (!slot || !seedIng) return;
+    const related = substituteGroupMembers(seedIng);
+    related.forEach((ing) => {
+      if (!slot.optionIds.includes(ing.id)) slot.optionIds.push(ing.id);
+    });
+  }
+
+  function addRecipeSlot(type, label) {
+    const cleanLabel = String(label || type || 'Slot').trim();
+    if (!cleanLabel) return;
+    const id = `slot-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const slot = { id, label: cleanLabel, type: type || 'Custom', optionIds: [] };
+    state.recipeSlots.push(slot);
+    renderSlots();
+    renderRecipeList(state.selected);
+    renderTray();
+  }
+
+  function removeRecipeSlot(slotId) {
+    state.recipeSlots = state.recipeSlots.filter((s) => s.id !== slotId);
+    renderSlots();
+    renderRecipeList(state.selected);
+    renderTray();
+  }
+
+  function addOptionToSlot(slotId, ing, { moveOffPlate = false } = {}) {
+    if (!ing) return;
+    const slot = state.recipeSlots.find((s) => s.id === slotId);
+    if (!slot) return;
+    if (!slot.optionIds.includes(ing.id)) slot.optionIds.push(ing.id);
+    seedSlotFromSubstitutes(slot, ing);
+    if (moveOffPlate) {
+      state.selected = state.selected.filter((x) => x.id !== ing.id);
+    }
+    renderSlots();
+    renderTray();
+    renderGrid();
+  }
+
+  function removeOptionFromSlot(slotId, ingId) {
+    const slot = state.recipeSlots.find((s) => s.id === slotId);
+    if (!slot) return;
+    slot.optionIds = slot.optionIds.filter((id) => id !== ingId);
+    renderSlots();
+    renderRecipeList(state.selected);
+    renderTray();
+  }
+
+  function wireSlotDropTarget(el, slotId) {
+    el.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      el.classList.add('drag-over');
+    });
+    el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+    el.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      el.classList.remove('drag-over');
+      const id = e.dataTransfer.getData('text/ing-id');
+      const fromRecipe = e.dataTransfer.getData('text/from-recipe') === '1';
+      const ing = state.byId.get(id);
+      if (ing) addOptionToSlot(slotId, ing, { moveOffPlate: fromRecipe });
+    });
+  }
+
+  function renderSlotAddRail() {
+    const el = $('#slot-add-rail');
+    if (!el) return;
+    el.innerHTML = SLOT_TYPES.map((s) => `
+      <button type="button" class="slot-add-chip" data-slot-type="${esc(s.type)}">${esc(s.label)}</button>
+    `).join('');
+    el.querySelectorAll('.slot-add-chip').forEach((btn) => {
+      btn.addEventListener('click', () => addRecipeSlot(btn.dataset.slotType, btn.dataset.slotType));
+    });
+  }
+
+  function renderSlots() {
+    const wrap = $('#slots-section');
+    const el = $('#recipe-slots');
+    if (!wrap || !el) return;
+    wrap.hidden = state.mode !== 'dish';
+    const slots = state.recipeSlots;
+    el.innerHTML = slots.map((slot) => {
+      const opts = (slot.optionIds || []).map((id) => state.byId.get(id)).filter(Boolean);
+      return `
+        <div class="recipe-slot" data-slot-id="${esc(slot.id)}" data-drop="slot">
+          <div class="recipe-slot-head">
+            <span class="recipe-slot-label">${esc(slot.label)}</span>
+            <button type="button" class="recipe-slot-remove" data-remove-slot="${esc(slot.id)}" aria-label="Remove slot">✕</button>
+          </div>
+          <div class="recipe-slot-options">
+            ${opts.map((ing) => `
+              <button type="button" class="slot-opt-chip" data-slot-id="${esc(slot.id)}" data-opt-id="${esc(ing.id)}" title="${esc(ing.name)}" aria-label="Remove ${esc(ing.name)}">
+                ${artHtml(ing)}
+              </button>
+            `).join('') || `<span class="slot-drop-hint">Drop options here</span>`}
+          </div>
+        </div>`;
+    }).join('');
+
+    el.querySelectorAll('.recipe-slot').forEach((row) => {
+      wireSlotDropTarget(row, row.dataset.slotId);
+    });
+    el.querySelectorAll('[data-remove-slot]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeRecipeSlot(btn.dataset.removeSlot);
+      });
+    });
+    el.querySelectorAll('.slot-opt-chip').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeOptionFromSlot(btn.dataset.slotId, btn.dataset.optId);
+      });
+    });
+    enhanceArtImages(el);
   }
 
   function syncDishNameField() {
@@ -538,7 +716,8 @@
   function renderRecipeList(ingredients) {
     const el = $('#recipe-list');
     if (!el) return;
-    const rows = sortedPlate(ingredients);
+    // Fixed required lines only — slot options live in the Slots section
+    const rows = sortedPlate(corePlateIngredients(ingredients));
     if (!rows.length) {
       el.innerHTML = '';
       el.hidden = true;
@@ -546,12 +725,22 @@
     }
     el.hidden = false;
     el.innerHTML = rows.map((ing) => `
-      <li class="recipe-row">
+      <li class="recipe-row" data-ing-id="${esc(ing.id)}" draggable="true">
         <span class="recipe-ico">${artHtml(ing)}</span>
         <span class="recipe-qty">${esc(servingLabel(ing))}</span>
         <span class="recipe-name">${esc(ing.name)}</span>
       </li>
     `).join('');
+    el.querySelectorAll('.recipe-row').forEach((row) => {
+      row.addEventListener('dragstart', (e) => {
+        row.classList.add('dragging');
+        e.dataTransfer.setData('text/ing-id', row.dataset.ingId);
+        e.dataTransfer.setData('text/from-recipe', '1');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      row.addEventListener('dragend', () => row.classList.remove('dragging'));
+    });
+    enhanceArtImages(el);
   }
 
   function renderRestaurantRail() {
@@ -770,13 +959,16 @@
       style: legality().style
     });
     renderRecipeList(state.selected);
+    renderSlots();
     syncRestaurantFromPlate();
     renderRestaurantRail();
     refreshAutoName();
 
     const legal = legality();
     const core = S.coreReady(state.selected, state.catalog);
-    const canCreate = legal.ok && core.ok && state.selected.length >= 2;
+    const slotCheck = plateSatisfiesCurrentRecipe();
+    const slotsOk = !slotCheck || slotCheck.ok;
+    const canCreate = legal.ok && core.ok && state.selected.length >= 2 && slotsOk;
     const btn = $('#btn-create-dish');
     btn.disabled = !canCreate;
     btn.textContent = 'Create dish';
@@ -784,7 +976,14 @@
     const max = state.catalog.maxDishIngredients || 5;
     const hq = FiveStar()?.isFiveStarQuality(score?.stars?.total, state.fiveStarArt);
     if (!state.selected.length) $('#tray-hint').textContent = '';
-    else if (state.selected.length >= max && !canCreate) {
+    else if (!slotsOk && slotCheck?.missingSlots?.length) {
+      const cue = slotCheck.missingSlots
+        .map((s) => S.missingSlotCue(s, state.byId))
+        .filter(Boolean)
+        .slice(0, 2)
+        .join(' · ');
+      $('#tray-hint').textContent = cue ? `Need ${cue}` : 'Fill required slots';
+    } else if (state.selected.length >= max && !canCreate) {
       $('#tray-hint').textContent = !legal.ok
         ? `Blocked: ${legal.reason}`
         : (!core.ok ? `Plate full (${max}) · need carb + protein` : `Plate full (${max})`);
@@ -822,7 +1021,10 @@
     const legal = legality();
     if (!legal.ok) return;
     if (!S.coreReady(state.selected, state.catalog).ok) return;
+    const slotCheck = plateSatisfiesCurrentRecipe();
+    if (slotCheck && !slotCheck.ok) return;
     const ingredients = state.selected.map((i) => ({ ...i }));
+    const slots = normalizeRecipeSlots(state.recipeSlots);
     const shop = restaurantById(state.restaurantId);
     const name = (state.dishName || '').trim()
       || S.autoName(ingredients, legal.style, shop?.name);
@@ -834,6 +1036,7 @@
       restaurant: shop?.name || '',
       restaurantId: state.restaurantId || '',
       ingredients,
+      slots,
       score,
       variations: [],
       status: 'kept',
@@ -864,6 +1067,7 @@
         <p class="dish-title">${esc(d.name)}</p>
         <div class="plate-meters" id="dish-meters"></div>
         <ul class="recipe-list" id="dish-recipe-list"></ul>
+        <div class="recipe-slots dish-recipe-slots" id="dish-slots-list"></div>
         <div class="dish-tags">
           ${d.restaurant ? `<span class="style-pill">${esc(d.restaurant)}</span>` : ''}
           <span class="style-pill">${esc(d.style || 'general')}</span>
@@ -879,9 +1083,9 @@
       restaurantName: d.restaurant,
       style: d.style
     });
-    // reuse recipe renderer into dish list
+    // reuse recipe renderer into dish list — cores only
     const list = $('#dish-recipe-list');
-    const rows = sortedPlate(d.ingredients);
+    const rows = sortedPlate(S.recipeCores(d.ingredients, d.slots || []));
     list.innerHTML = rows.map((ing) => `
       <li class="recipe-row">
         <span class="recipe-ico">${artHtml(ing)}</span>
@@ -889,6 +1093,27 @@
         <span class="recipe-name">${esc(ing.name)}</span>
       </li>
     `).join('');
+
+    const slotsEl = $('#dish-slots-list');
+    if (slotsEl) {
+      const slots = normalizeRecipeSlots(d.slots);
+      slotsEl.innerHTML = slots.map((slot) => {
+        const opts = (slot.optionIds || []).map((id) => state.byId.get(id)).filter(Boolean);
+        if (!opts.length) return '';
+        return `
+          <div class="recipe-slot readonly">
+            <div class="recipe-slot-head">
+              <span class="recipe-slot-label">${esc(slot.label)}</span>
+            </div>
+            <div class="recipe-slot-options">
+              ${opts.map((ing) => `
+                <span class="slot-opt-chip" title="${esc(ing.name)}">${artHtml(ing)}</span>
+              `).join('')}
+            </div>
+          </div>`;
+      }).join('');
+      enhanceArtImages(slotsEl);
+    }
 
     const varList = $('#variation-list');
     if (!d.variations.length) {
@@ -1014,6 +1239,7 @@
     }));
     const ts = Sync().nowIso();
     const score = S.scoreDish(d.ingredients, state.catalog);
+    const slots = normalizeRecipeSlots(d.slots);
     return {
       id: d.id,
       name: d.name,
@@ -1022,10 +1248,12 @@
       restaurantId: d.restaurantId || '',
       status: d.status || 'kept',
       ingredients: slim(d.ingredients),
+      slots,
       score,
       variations: (d.variations || []).map((v) => ({
         id: v.id, name: v.name, style: v.style, note: v.note, highlightId: v.highlightId,
         ingredients: slim(v.ingredients),
+        slots: normalizeRecipeSlots(v.slots || d.slots),
         score: S.scoreDish(v.ingredients, state.catalog),
         updatedAt: ts
       })),
@@ -1141,6 +1369,15 @@
     state.dishName = dish.name || '';
     state.dishNameManual = true;
     state.restaurantId = dish.restaurantId || null;
+    state.recipeSlots = normalizeRecipeSlots(dish.slots);
+    state.loadedRecipe = {
+      id: dish.id,
+      name: dish.name,
+      ingredients: ings.map((i) => ({ ...i })),
+      slots: normalizeRecipeSlots(dish.slots),
+      variations: dish.variations || [],
+      source: dish.source || ''
+    };
     if (!state.restaurantId && dish.restaurant) {
       const hit = RESTAURANTS.find((r) => r.name === dish.restaurant);
       if (hit) state.restaurantId = hit.id;
@@ -2137,10 +2374,24 @@
       state.dishNameManual = false;
       state.dishName = '';
       state.restaurantId = null;
+      state.recipeSlots = [];
+      state.loadedRecipe = null;
       renderTray();
       renderGrid();
     });
     $('#btn-create-dish').addEventListener('click', createDish);
+    $('#btn-add-custom-slot')?.addEventListener('click', () => {
+      const input = $('#slot-custom-name');
+      const name = (input?.value || '').trim();
+      if (!name) return;
+      addRecipeSlot('Custom', name);
+      if (input) input.value = '';
+    });
+    $('#slot-custom-name')?.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      $('#btn-add-custom-slot')?.click();
+    });
     $('#btn-create-ingredient')?.addEventListener('click', createIngredient);
     $('#btn-clear-process')?.addEventListener('click', () => {
       state.processSlots = state.processSlots.map((s) => ({ ...s, filledId: null }));
@@ -2258,9 +2509,11 @@
     state.kept = state.kept.map((d) => ({
       ...d,
       ingredients: hydrateIngredients(d.ingredients),
+      slots: normalizeRecipeSlots(d.slots),
       variations: (d.variations || []).map((v) => ({
         ...v,
-        ingredients: hydrateIngredients(v.ingredients)
+        ingredients: hydrateIngredients(v.ingredients),
+        slots: normalizeRecipeSlots(v.slots || d.slots)
       }))
     }));
     localStorage.setItem('food-menus-kept-v1', JSON.stringify(state.kept));
@@ -2279,6 +2532,8 @@
     renderTypeRail();
     renderFamilies();
     renderGrid();
+    renderSlotAddRail();
+    renderSlots();
     renderTray();
     setMode('dish');
     if ('serviceWorker' in navigator) {

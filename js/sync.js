@@ -14,7 +14,7 @@
       'art_status', 'art_url', 'hunger_key', 'flavor_key', 'star_roles', 'shelf_days', 'updatedAt'
     ],
     dishes: [
-      'id', 'name', 'kind', 'parent_id', 'ingredient_ids',
+      'id', 'name', 'kind', 'parent_id', 'ingredient_ids', 'slots',
       'stars', 'hunger', 'flavor', 'kcal', 'status', 'style', 'restaurant', 'updatedAt'
     ],
     scoring: ['id', 'section', 'item', 'value', 'notes', 'updatedAt'],
@@ -170,12 +170,14 @@
   function dishRowFromKept(dish, { kind = 'basic', parentId = '', status } = {}) {
     const score = dish.score || {};
     const ids = (dish.ingredients || []).map((i) => i.id || i.name).join(',');
+    const slots = Array.isArray(dish.slots) ? dish.slots : [];
     return {
       id: dish.id,
       name: dish.name || '',
       kind,
       parent_id: parentId,
       ingredient_ids: ids,
+      slots: slots.length ? JSON.stringify(slots) : '',
       stars: score.stars?.total ?? score.stars?.label ?? '',
       hunger: score.hunger?.label ?? score.hunger?.pct ?? '',
       flavor: score.flavor?.label ?? score.flavor?.pct ?? '',
@@ -686,6 +688,17 @@
     return store;
   }
 
+  function parseSlotsField(raw) {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    try {
+      const parsed = JSON.parse(String(raw));
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
   function keptFromStore(store) {
     // Reconstruct minimal kept list from dish rows (basics only with status kept)
     const basics = Object.values(store.dishes || {}).filter((d) => d.kind === 'basic');
@@ -701,6 +714,7 @@
             style: v.style,
             status: v.status,
             ingredients: String(v.ingredient_ids || '').split(',').filter(Boolean).map((id) => ({ id })),
+            slots: parseSlotsField(v.slots),
             score: {
               stars: { label: String(v.stars), total: Number(v.stars) || 0, display: `${v.stars}★` },
               hunger: { label: String(v.hunger) },
@@ -715,6 +729,7 @@
           restaurant: d.restaurant || '',
           status: d.status || 'kept',
           ingredients: String(d.ingredient_ids || '').split(',').filter(Boolean).map((id) => ({ id })),
+          slots: parseSlotsField(d.slots),
           score: {
             stars: { label: String(d.stars), total: Number(d.stars) || 0, display: `${d.stars}★` },
             hunger: { label: String(d.hunger) },

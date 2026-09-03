@@ -57,6 +57,17 @@
         </label>
         <div class="plate-meters" id="plate-meters"></div>
         <ul class="recipe-list" id="recipe-list" aria-label="Recipe ingredients"></ul>
+        <section class="slots-section" id="slots-section" aria-label="Flexible slots">
+          <h3 class="slots-heading">Slots</h3>
+          <div class="slot-add-rail" id="slot-add-rail" aria-label="Add slot"></div>
+          <label class="slot-custom-wrap" for="slot-custom-name">
+            <span class="sr-only">Custom slot name</span>
+            <input type="text" id="slot-custom-name" class="slot-custom-input" maxlength="32"
+              placeholder="Custom slot name" autocomplete="off" enterkeyhint="done" />
+            <button type="button" class="chip-btn" id="btn-add-custom-slot">Add</button>
+          </label>
+          <div class="recipe-slots" id="recipe-slots" aria-label="Recipe slots"></div>
+        </section>
         <div class="restaurant-rail" id="restaurant-rail" aria-label="Restaurant tag"></div>
         <div class="plate-actions">
           <button type="button" class="ghost-round" id="btn-clear-tray" aria-label="Clear plate">✕</button>

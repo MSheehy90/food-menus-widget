@@ -185,6 +185,76 @@
     return { ok: carbs.length >= 1 && proteins.length >= 1, carbs, proteins };
   }
 
+  /** Ingredient ids that are options in any non-empty flexible slot. */
+  function slotOptionIdSet(slots) {
+    const ids = new Set();
+    (slots || []).forEach((slot) => {
+      (slot.optionIds || []).forEach((id) => { if (id) ids.add(id); });
+    });
+    return ids;
+  }
+
+  /**
+   * Required cores = recipe ingredients that are not listed as a slot option.
+   * Empty slots are ignored. Extra garnish on the plate is fine.
+   */
+  function recipeCores(ingredients, slots) {
+    const optionIds = slotOptionIdSet(slots);
+    return (ingredients || []).filter((ing) => ing && !optionIds.has(ing.id || ing));
+  }
+
+  /**
+   * Plate (or kitchen id list) satisfies a dish recipe when every core is present
+   * and every slot with ≥1 option has at least one of those options present.
+   */
+  function satisfiesRecipe(plateOrIds, recipe, { nameLookup } = {}) {
+    const slots = recipe?.slots || [];
+    const plateList = Array.isArray(plateOrIds) ? plateOrIds : [];
+    const plateIds = new Set(
+      plateList.map((x) => {
+        if (!x) return '';
+        if (typeof x === 'string') return x;
+        return x.id || '';
+      }).filter(Boolean)
+    );
+    const cores = recipeCores(recipe?.ingredients || [], slots);
+    const missingCores = cores.filter((c) => {
+      const id = c.id || c;
+      if (plateIds.has(id)) return false;
+      // Allow match by name when ids differ across sources
+      if (nameLookup && typeof c === 'object' && c.name) {
+        const alt = nameLookup(c.name);
+        return !(alt && plateIds.has(alt.id));
+      }
+      return true;
+    });
+    const missingSlots = [];
+    (slots || []).forEach((slot) => {
+      const opts = (slot.optionIds || []).filter(Boolean);
+      if (!opts.length) return;
+      if (opts.some((id) => plateIds.has(id))) return;
+      missingSlots.push(slot);
+    });
+    return {
+      ok: !missingCores.length && !missingSlots.length,
+      missingCores,
+      missingSlots,
+      cores
+    };
+  }
+
+  function missingSlotCue(slot, byId) {
+    if (!slot) return '';
+    const label = slot.label || slot.type || 'Slot';
+    const names = (slot.optionIds || [])
+      .map((id) => byId?.get?.(id)?.name || id)
+      .filter(Boolean);
+    if (!names.length) return label;
+    if (names.length === 1) return `${label}: ${names[0].toLowerCase()}`;
+    if (names.length === 2) return `${label}: ${names[0].toLowerCase()} or ${names[1].toLowerCase()}`;
+    return `${label}: ${names.slice(0, -1).map((n) => n.toLowerCase()).join(', ')}, or ${names[names.length - 1].toLowerCase()}`;
+  }
+
   function autoName(selected, style, restaurantName) {
     const list = selected || [];
     if (!list.length) return '';
@@ -245,6 +315,10 @@
     isCarb,
     isProtein,
     coreReady,
+    recipeCores,
+    slotOptionIdSet,
+    satisfiesRecipe,
+    missingSlotCue,
     autoName,
     restaurantLock
   };
