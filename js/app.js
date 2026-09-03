@@ -409,12 +409,12 @@
       return `<span class="station-glyph ${glyph}" aria-hidden="true"></span>`;
     }
     const art = normalizeArtPath(ing?.art);
-    if (art && !isArtBroken(art)) {
+    if (art && !isArtBroken(art) && !isArtDeleted(art)) {
       const src = resolveArtSrc(art);
       const sizeCls = `art-fit art-${artSizeClass(art)}`;
       return `<img class="${esc((cls ? `${cls} ` : '') + sizeCls)}" src="${esc(src)}" alt="" draggable="false" loading="lazy" decoding="async" data-art="${esc(art)}" />`;
     }
-    if (art && isArtBroken(art)) {
+    if (art && (isArtBroken(art) || isArtDeleted(art))) {
       return `<span class="name-fallback art-broken" title="${esc(art)}">?</span>`;
     }
     return `<span class="name-fallback">${esc(ing?.name || '?')}</span>`;
@@ -425,11 +425,11 @@
     return Boolean(p && state.brokenArt.has(p));
   }
 
-  /** Empty art OR broken/404 art — Gallery Missing set + detail reassign targets. */
+  /** Empty art OR broken/404 art OR client-deleted art — Gallery Missing set + detail reassign targets. */
   function ingredientNeedsArt(ing) {
     if (!ing || ing.isStation) return false;
     const art = normalizeArtPath(ing.art);
-    return !art || isArtBroken(art);
+    return !art || isArtBroken(art) || isArtDeleted(art);
   }
 
   function missingArtIngredients() {
@@ -1219,14 +1219,43 @@
     return chips.length ? `<div class="detail-meta">${chips.join('')}</div>` : '';
   }
 
+  /** Catalog names that share this tile's art path (explains Painted "Name xN"). */
+  function sharedArtNames(ing) {
+    const art = normalizeArtPath(ing?.art);
+    const names = [];
+    const seen = new Set();
+    const push = (n) => {
+      const key = String(n || '').trim().toLowerCase();
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      names.push(String(n).trim());
+    };
+    if (art) {
+      (state.catalog.ingredients || []).forEach((other) => {
+        if (normalizeArtPath(other.art) === art) push(other.name);
+      });
+    }
+    if (!names.length) push(ing?.name);
+    return names;
+  }
+
+  function detailSharedNamesHtml(ing) {
+    const names = sharedArtNames(ing);
+    if (names.length <= 1) return '';
+    return `<p class="detail-shared" title="One file shared by ${names.length} catalog names">
+      Same picture for <strong>${names.length}</strong> names:
+      ${names.map((n) => esc(n)).join(', ')}
+    </p>`;
+  }
+
   function detailReassignHtml(ing) {
     const artPath = normalizeArtPath(ing?.art);
-    if (!artPath || isArtBroken(artPath)) return '';
+    if (!artPath || isArtBroken(artPath) || isArtDeleted(artPath)) return '';
     const missing = missingArtIngredients().filter((m) => m.id !== ing.id);
     const list = missing.length
       ? missing.map((m) => {
         const bits = [m.uiType, m.uiFamily || m.category].filter(Boolean).join(' · ');
-        const why = !normalizeArtPath(m.art) ? 'empty' : 'broken';
+        const why = !normalizeArtPath(m.art) ? 'empty' : (isArtDeleted(m.art) ? 'deleted' : 'broken');
         return `<button type="button" class="detail-reassign-btn" data-missing-id="${esc(m.id)}">
           ${esc(m.name)}
           <span class="meta">${esc(bits || why)} · ${esc(why)}</span>
@@ -1240,17 +1269,33 @@
       </div>`;
   }
 
+  function detailDeleteHtml(ing) {
+    const artPath = normalizeArtPath(ing?.art);
+    if (!artPath || isArtDeleted(artPath)) return '';
+    return `
+      <div class="detail-delete">
+        <button type="button" class="detail-delete-start" id="detail-delete-start">Delete picture</button>
+        <div class="detail-delete-confirm" id="detail-delete-confirm" hidden>
+          <p class="detail-delete-warn">Permanently hide this picture on this device. Shared names become Missing. Close stays safe.</p>
+          <button type="button" class="detail-delete-confirm-btn" id="detail-delete-confirm-btn">Permanently delete</button>
+          <button type="button" class="detail-delete-cancel-btn" id="detail-delete-cancel-btn">Cancel</button>
+        </div>
+      </div>`;
+  }
+
   function openDetail(ing, { forceChain = false } = {}) {
     state.detailIng = ing;
     const onPlate = ing?.id && selectedIds().has(ing.id);
     const inCatalog = Boolean(ing?.id && state.byId.has(ing.id));
     const chain = resolveChainIngs(ing);
     const showChain = forceChain || isMade(ing) || chain.length > 1;
+    const displayName = sharedArtNames(ing)[0] || ing?.name || '';
 
     $('#detail-body').innerHTML = `
       <div class="detail-hero">
         <div class="big-ico">${artHtml(ing)}</div>
-        <p class="detail-name">${esc(ing?.name || '')}</p>
+        <p class="detail-name">${esc(displayName)}</p>
+        ${detailSharedNamesHtml(ing)}
         ${detailMetaChipsHtml(ing)}
       </div>
       ${showChain ? `
@@ -1262,6 +1307,7 @@
         </div>
       ` : ''}
       ${detailReassignHtml(ing)}
+      ${detailDeleteHtml(ing)}
     `;
 
     const toggle = $('#detail-toggle');
@@ -1280,6 +1326,25 @@
         assignArtToIngredient(missingId, artPath);
         $('#detail-dialog')?.close();
       });
+    });
+
+    const deleteStart = $('#detail-delete-start');
+    const deleteConfirmWrap = $('#detail-delete-confirm');
+    const deleteConfirmBtn = $('#detail-delete-confirm-btn');
+    const deleteCancelBtn = $('#detail-delete-cancel-btn');
+    deleteStart?.addEventListener('click', () => {
+      if (deleteConfirmWrap) deleteConfirmWrap.hidden = false;
+      if (deleteStart) deleteStart.hidden = true;
+    });
+    deleteCancelBtn?.addEventListener('click', () => {
+      if (deleteConfirmWrap) deleteConfirmWrap.hidden = true;
+      if (deleteStart) deleteStart.hidden = false;
+    });
+    deleteConfirmBtn?.addEventListener('click', () => {
+      const artPath = normalizeArtPath(ing.art);
+      if (!artPath) return;
+      permanentlyDeleteArt(artPath);
+      $('#detail-dialog')?.close();
     });
 
     enhanceArtImages($('#detail-body'));
@@ -1848,6 +1913,7 @@
   }
 
   const LOCAL_ART_KEY = 'food-menus-local-art-v1';
+  const DELETED_ART_KEY = 'food-menus-deleted-art-v1';
 
   function loadLocalArtStore() {
     try {
@@ -1861,10 +1927,29 @@
     localStorage.setItem(LOCAL_ART_KEY, JSON.stringify(map || {}));
   }
 
+  function loadDeletedArtSet() {
+    try {
+      const arr = JSON.parse(localStorage.getItem(DELETED_ART_KEY) || '[]');
+      return new Set((Array.isArray(arr) ? arr : []).map(normalizeArtPath).filter(Boolean));
+    } catch {
+      return new Set();
+    }
+  }
+
+  function saveDeletedArtSet(set) {
+    localStorage.setItem(DELETED_ART_KEY, JSON.stringify([...set]));
+  }
+
+  function isArtDeleted(path) {
+    const p = normalizeArtPath(path);
+    return Boolean(p && loadDeletedArtSet().has(p));
+  }
+
   /** Resolve local-art/* keys (and data:/blob: URLs) for <img src>. */
   function resolveArtSrc(path) {
     const p = normalizeArtPath(path);
     if (!p) return '';
+    if (isArtDeleted(p)) return '';
     if (/^(data:|blob:)/i.test(p)) return p;
     const local = loadLocalArtStore()[p];
     return local || p;
@@ -1923,7 +2008,7 @@
     const out = [];
     (state.artFiles || []).forEach((path) => {
       const p = normalizeArtPath(path);
-      if (!p || used.has(p) || seen.has(p)) return;
+      if (!p || used.has(p) || seen.has(p) || isArtDeleted(p)) return;
       seen.add(p);
       out.push(p);
     });
@@ -1981,6 +2066,7 @@
   async function ensureArtFiles() {
     if (state.artFiles.length) {
       mergeLocalArtIntoInventory();
+      purgeDeletedFromArtFiles();
       return state.artFiles;
     }
     try {
@@ -1993,6 +2079,7 @@
       }
     } catch { /* inventory optional */ }
     mergeLocalArtIntoInventory();
+    purgeDeletedFromArtFiles();
     return state.artFiles;
   }
 
@@ -2000,8 +2087,58 @@
     const local = loadLocalArtStore();
     Object.keys(local).forEach((path) => {
       const p = normalizeArtPath(path);
-      if (p && !state.artFiles.includes(p)) state.artFiles.push(p);
+      if (p && !isArtDeleted(p) && !state.artFiles.includes(p)) state.artFiles.push(p);
     });
+  }
+
+  function purgeDeletedFromArtFiles() {
+    state.artFiles = (state.artFiles || []).filter((p) => !isArtDeleted(p));
+  }
+
+  /** Unassign path everywhere, denylist it, drop from inventory — no git-rm. */
+  function permanentlyDeleteArt(artPath) {
+    const path = normalizeArtPath(artPath);
+    if (!path) return false;
+
+    (state.catalog.ingredients || []).forEach((ing) => {
+      if (normalizeArtPath(ing.art) === path) {
+        ing.art = '';
+        persistIngredientArt(ing);
+      }
+    });
+
+    state.artFiles = (state.artFiles || []).filter((p) => normalizeArtPath(p) !== path);
+
+    const deleted = loadDeletedArtSet();
+    deleted.add(path);
+    saveDeletedArtSet(deleted);
+
+    const local = loadLocalArtStore();
+    if (Object.prototype.hasOwnProperty.call(local, path)) {
+      delete local[path];
+      try { saveLocalArtStore(local); } catch { /* ignore quota */ }
+    }
+
+    state.brokenArt.delete(path);
+    rebuildIndexes();
+    renderGrid();
+    renderTray();
+    renderGallery();
+    return true;
+  }
+
+  /** If Pull/refresh reattaches a denylisted path, clear it again so Missing stays honest. */
+  function applyDeletedArtDenylistToCatalog() {
+    let changed = false;
+    (state.catalog.ingredients || []).forEach((ing) => {
+      const art = normalizeArtPath(ing.art);
+      if (!art || !isArtDeleted(art)) return;
+      ing.art = '';
+      persistIngredientArt(ing);
+      changed = true;
+    });
+    purgeDeletedFromArtFiles();
+    return changed;
   }
 
   function readFileAsDataUrl(file) {
@@ -2132,7 +2269,7 @@
 
     (state.catalog.ingredients || []).forEach((ing) => {
       const art = normalizeArtPath(ing.art);
-      if (!art) return;
+      if (!art || isArtDeleted(art)) return;
       const nameArtKey = `${String(ing.name || '').toLowerCase()}|${art}`;
       if (seenNameArt.has(nameArtKey)) return; // drop duplicate name+art catalog rows
       seenNameArt.add(nameArtKey);
@@ -2474,6 +2611,7 @@
         return;
       }
       Sync().applyIngredientRowsToCatalog(state.catalog, result.store.ingredients, result.store.assets);
+      applyDeletedArtDenylistToCatalog();
       rebuildIndexes();
       // Merge dishes from sheet into kept
       const sheetKept = Sync().keptFromStore(result.store).map((d) => ({
@@ -2951,6 +3089,7 @@
       tryPull: Sync().hasClientId()
     });
     await ensureArtFiles();
+    applyDeletedArtDenylistToCatalog();
     rebuildIndexes();
     loadKept();
     state.kept = state.kept.map((d) => ({
