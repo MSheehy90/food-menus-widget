@@ -3700,7 +3700,7 @@
         return;
       }
       const groups = groupInOrder(items, paintedSectionLabel);
-      const showHeads = groups.length > 1;
+      const showHeads = groups.length > 1 || state.galleryType !== '__all__';
       grid.innerHTML = groups.map(({ key, items: list }) => `
         ${showHeads ? sectionHeadHtml(key) : ''}
         ${list.map((it) => {
