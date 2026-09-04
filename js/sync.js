@@ -486,58 +486,227 @@
     }
   }
 
+  /** Normalize sheet header for flexible matching (Difficulty / Rarity ↔ difficulty rarity). */
+  function normHeaderKey(h) {
+    return String(h || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
+  }
+
+  function headerIndex(normHeaders, ...aliases) {
+    for (const alias of aliases) {
+      const want = normHeaderKey(alias);
+      if (!want) continue;
+      const i = normHeaders.indexOf(want);
+      if (i >= 0) return i;
+    }
+    return -1;
+  }
+
+  function cellAt(line, idx) {
+    if (idx < 0) return '';
+    return String(line[idx] ?? '').trim();
+  }
+
+  function splitCsvList(raw) {
+    if (Array.isArray(raw)) {
+      return raw.map((s) => String(s || '').trim()).filter(Boolean);
+    }
+    return String(raw || '')
+      .split(/[,;|]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
+  function parseOptionalNumber(raw) {
+    if (raw == null || raw === '') return null;
+    if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
+    const n = Number(String(raw).replace(/,/g, '').trim());
+    return Number.isFinite(n) ? n : null;
+  }
+
+  /** Flavor tokens that become locker filter chips (tare + aromatic). */
+  const FILTER_FLAVOR_CANON = Object.freeze({
+    aromatic: 'Aromatic',
+    salty: 'Salty',
+    soy: 'Soy',
+    umami: 'Umami',
+    fermented: 'Fermented',
+    fermentative: 'Fermented',
+    miso: 'Miso',
+    chili: 'Chili',
+    chilli: 'Chili',
+    sesame: 'Sesame'
+  });
+
+  /** Existing Food Master tare / seasoning names → Seasoning + flavor profiles. */
+  const TARE_NAME_TAGS = Object.freeze({
+    miso: ['Seasoning', 'Umami', 'Fermented', 'Miso', 'Salty'],
+    'soy sauce': ['Seasoning', 'Soy', 'Umami', 'Fermented', 'Salty'],
+    'fish sauce': ['Seasoning', 'Umami', 'Fermented', 'Salty'],
+    salt: ['Seasoning', 'Salty']
+  });
+
+  function titleCaseTag(raw) {
+    const s = String(raw || '').trim();
+    if (!s) return '';
+    const canon = FILTER_FLAVOR_CANON[s.toLowerCase()];
+    if (canon) return canon;
+    if (/^(seasoning|aromatic)$/i.test(s)) {
+      return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+    }
+    return s.replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
+  /**
+   * Build filter tags from Tags/Filter Tags column, Flavor profiles, and
+   * Group/Category heuristics. Does not invent Food Master row names.
+   */
+  function deriveFilterTags(row) {
+    const tags = new Set();
+    splitCsvList(row.tags || row.filterTags || row['Filter Tags'] || row.Tags)
+      .forEach((t) => {
+        const label = titleCaseTag(t);
+        if (label) tags.add(label);
+      });
+    const flavors = Array.isArray(row.flavor)
+      ? row.flavor
+      : splitCsvList(row.flavor || row.Flavor);
+    flavors.forEach((f) => {
+      const canon = FILTER_FLAVOR_CANON[String(f || '').toLowerCase().trim()];
+      if (canon) tags.add(canon);
+    });
+    const cat = String(row.category || '').trim().toLowerCase();
+    const name = String(row.item || row.name || '').trim().toLowerCase();
+    if (cat === 'spice' || cat === 'herb') {
+      tags.add('Seasoning');
+      tags.add('Aromatic');
+    }
+    if (cat === 'seasoning') tags.add('Seasoning');
+    Object.entries(TARE_NAME_TAGS).forEach(([key, list]) => {
+      if (name === key || name.includes(key)) {
+        list.forEach((t) => tags.add(t));
+      }
+    });
+    if (/chili|chilli/.test(name)) tags.add('Chili');
+    if (/sesame/.test(name)) tags.add('Sesame');
+    if (/miso/.test(name)) tags.add('Miso');
+    return [...tags];
+  }
+
+  function biomeFromRow(row) {
+    const direct = String(row.biome || row.Biome || '').trim();
+    if (direct) return direct;
+    const climate = row.climate || {};
+    return String(climate.biome || climate.Biome || '').trim();
+  }
+
   /**
    * Parse Food Master sheet values. Header is typically CSV row 3:
-   * Row,Item,Stage,Group,Category,Type,...,Serving State,...
+   * Row,Item,Stage,Group,Category,Type,...,Serving State,Calories,Difficulty / Rarity,Flavor,...
+   * Optional Tags / Filter Tags column for locker filter chips.
    */
   function parseFoodMasterSheetValues(values) {
     const rows = values || [];
     let headerIdx = -1;
-    let headers = [];
+    let rawHeaders = [];
     for (let i = 0; i < Math.min(rows.length, 12); i++) {
       const cells = (rows[i] || []).map((c) => String(c || '').trim());
       if (cells.includes('Item') && (cells.includes('Group') || cells.includes('Category'))) {
         headerIdx = i;
-        headers = cells.map((h) => h.toLowerCase());
+        rawHeaders = cells;
         break;
       }
     }
     if (headerIdx < 0) return [];
-    const idx = (name) => headers.indexOf(String(name).toLowerCase());
-    const iItem = idx('item');
-    const iStage = idx('stage');
-    const iGroup = idx('group');
-    const iCategory = idx('category');
-    const iType = idx('type');
-    const iServState = idx('serving state');
+    const norms = rawHeaders.map(normHeaderKey);
+    const iItem = headerIndex(norms, 'item');
+    const iStage = headerIndex(norms, 'stage');
+    const iGroup = headerIndex(norms, 'group');
+    const iCategory = headerIndex(norms, 'category');
+    const iType = headerIndex(norms, 'type');
+    const iServState = headerIndex(norms, 'serving state');
+    const iKcal = headerIndex(norms, 'calories', 'kcal', 'calorie', 'cals');
+    const iRarity = headerIndex(norms, 'difficulty rarity', 'difficulty / rarity', 'rarity', 'difficulty');
+    const iFlavor = headerIndex(norms, 'flavor', 'flavors', 'flavor profile');
+    const iShelfLife = headerIndex(norms, 'shelf life');
+    const iStorageForm = headerIndex(norms, 'storage form');
+    const iServingQty = headerIndex(norms, 'serving qty', 'serving quantity', 'serv qty');
+    const iServingUnit = headerIndex(norms, 'serving unit', 'serv unit');
+    const iShelfStable = headerIndex(norms, 'shelf stable');
+    const iTrainFit = headerIndex(norms, 'train fit');
+    const iBiome = headerIndex(norms, 'biome');
+    const iTags = headerIndex(norms, 'tags', 'filter tags', 'filter tag', 'tag');
     const out = [];
     for (let r = headerIdx + 1; r < rows.length; r++) {
       const line = rows[r] || [];
-      const item = String(line[iItem] ?? '').trim();
+      const item = cellAt(line, iItem);
       if (!item) continue;
-      out.push({
+      const stageRaw = cellAt(line, iStage);
+      const flavor = splitCsvList(cellAt(line, iFlavor));
+      const tagsRaw = splitCsvList(cellAt(line, iTags));
+      const row = {
         item,
-        stage: String(line[iStage] ?? '').trim(),
-        stageRaw: String(line[iStage] ?? '').trim(),
-        group: String(line[iGroup] ?? '').trim(),
-        category: String(line[iCategory] ?? '').trim(),
-        type: String(line[iType] ?? '').trim(),
-        servState: iServState >= 0 ? String(line[iServState] ?? '').trim() : ''
-      });
+        stage: stageRaw,
+        stageRaw,
+        group: cellAt(line, iGroup),
+        category: cellAt(line, iCategory),
+        type: cellAt(line, iType),
+        servState: cellAt(line, iServState),
+        kcal: parseOptionalNumber(cellAt(line, iKcal)),
+        difficultyRarity: cellAt(line, iRarity),
+        flavor,
+        shelfLife: cellAt(line, iShelfLife),
+        storageForm: cellAt(line, iStorageForm),
+        servingQty: parseOptionalNumber(cellAt(line, iServingQty)),
+        servingUnit: cellAt(line, iServingUnit),
+        shelfStable: cellAt(line, iShelfStable),
+        trainFit: cellAt(line, iTrainFit),
+        biome: cellAt(line, iBiome),
+        tags: tagsRaw
+      };
+      row.filterTags = deriveFilterTags(row);
+      out.push(row);
     }
     return out;
   }
 
   function foodMasterRowsFromBaked(data) {
-    return (data?.rows || []).map((row) => ({
-      item: row.item || row.Item || '',
-      stage: row.stage || '',
-      stageRaw: row.stageRaw || row.stage || '',
-      group: row.group || '',
-      category: row.category || '',
-      type: row.type || '',
-      servState: row.servState || row['Serving State'] || ''
-    })).filter((r) => r.item);
+    return (data?.rows || []).map((row) => {
+      const flavor = Array.isArray(row.flavor)
+        ? row.flavor.map((s) => String(s || '').trim()).filter(Boolean)
+        : splitCsvList(row.flavor || row.Flavor);
+      const tags = Array.isArray(row.tags)
+        ? row.tags.map((s) => String(s || '').trim()).filter(Boolean)
+        : splitCsvList(row.tags || row.filterTags || row['Filter Tags']);
+      const mapped = {
+        item: row.item || row.Item || '',
+        stage: row.stage || '',
+        stageRaw: row.stageRaw || row.stage || '',
+        group: row.group || '',
+        category: row.category || '',
+        type: row.type || '',
+        servState: row.servState || row['Serving State'] || '',
+        kcal: parseOptionalNumber(row.kcal ?? row.calories ?? row.Calories),
+        difficultyRarity: String(row.difficultyRarity || row.rarity || row['Difficulty / Rarity'] || '').trim(),
+        flavor,
+        shelfLife: String(row.shelfLife || row['Shelf Life'] || '').trim(),
+        storageForm: String(row.storageForm || row['Storage Form'] || '').trim(),
+        servingQty: parseOptionalNumber(row.servingQty ?? row['Serving Qty']),
+        servingUnit: String(row.servingUnit || row['Serving Unit'] || '').trim(),
+        shelfStable: String(row.shelfStable || row['Shelf Stable'] || '').trim(),
+        trainFit: String(row.trainFit || row['Train Fit'] || '').trim(),
+        biome: biomeFromRow(row),
+        tags,
+        climate: row.climate || null
+      };
+      mapped.filterTags = tags.length
+        ? deriveFilterTags({ ...mapped, tags })
+        : deriveFilterTags(mapped);
+      return mapped;
+    }).filter((r) => r.item);
   }
 
   async function loadBakedFoodMasterRows() {
@@ -550,10 +719,84 @@
     }
   }
 
+  function sameStringList(a, b) {
+    const aa = (Array.isArray(a) ? a : []).map((s) => String(s)).join('\u0001');
+    const bb = (Array.isArray(b) ? b : []).map((s) => String(s)).join('\u0001');
+    return aa === bb;
+  }
+
+  function assignMasterDetailFields(ing, row) {
+    let changed = false;
+    const setIf = (key, value, { allowEmpty = false } = {}) => {
+      if (value == null) return;
+      if (typeof value === 'string') {
+        if (!allowEmpty && value === '') return;
+        if (ing[key] !== value) {
+          ing[key] = value;
+          changed = true;
+        }
+        return;
+      }
+      if (typeof value === 'number') {
+        if (ing[key] !== value) {
+          ing[key] = value;
+          changed = true;
+        }
+      }
+    };
+    if (row.kcal != null && Number.isFinite(Number(row.kcal))) {
+      const n = Number(row.kcal);
+      if (ing.kcal !== n) {
+        ing.kcal = n;
+        changed = true;
+      }
+    }
+    setIf('difficultyRarity', String(row.difficultyRarity || '').trim());
+    if (ing.difficultyRarity && ing.rarity !== ing.difficultyRarity) {
+      ing.rarity = ing.difficultyRarity;
+      changed = true;
+    }
+    if (Array.isArray(row.flavor) && row.flavor.length && !sameStringList(ing.flavor, row.flavor)) {
+      ing.flavor = row.flavor.slice();
+      changed = true;
+    } else if (Array.isArray(row.flavor) && !Array.isArray(ing.flavor)) {
+      ing.flavor = row.flavor.slice();
+      changed = true;
+    }
+    setIf('shelfLife', String(row.shelfLife || '').trim());
+    setIf('storageForm', String(row.storageForm || '').trim());
+    if (row.servingQty != null && Number.isFinite(Number(row.servingQty))) {
+      const n = Number(row.servingQty);
+      if (ing.servingQty !== n) {
+        ing.servingQty = n;
+        changed = true;
+      }
+    }
+    setIf('servingUnit', String(row.servingUnit || '').trim());
+    setIf('shelfStable', String(row.shelfStable || '').trim());
+    setIf('trainFit', String(row.trainFit || '').trim());
+    const biome = String(row.biome || biomeFromRow(row) || '').trim();
+    setIf('biome', biome);
+    const filterTags = Array.isArray(row.filterTags) && row.filterTags.length
+      ? row.filterTags.slice()
+      : deriveFilterTags(row);
+    if (filterTags.length && !sameStringList(ing.filterTags, filterTags)) {
+      ing.filterTags = filterTags;
+      ing.tags = filterTags.slice();
+      changed = true;
+    } else if (!ing.filterTags && filterTags.length) {
+      ing.filterTags = filterTags;
+      ing.tags = filterTags.slice();
+      changed = true;
+    }
+    return changed;
+  }
+
   /**
    * Read-only merge of Food Master Item roster into catalog.
    * Creates missing catalog rows; updates uiType from Group and uiFamily/category from Category.
    * Applies Stage + Serving State → useKind (dish|processed|fresh|raw).
+   * Merges kcal, rarity, flavor, serving, shelf/storage, train fit, biome, filter tags when present.
    * Does NOT invent HQ extras or write back to Food Master.
    * Dirty local / SoT use_kind overrides are preserved (same idea as dirty art).
    */
@@ -603,6 +846,9 @@
         servState,
         name
       });
+      const filterTags = Array.isArray(row.filterTags) && row.filterTags.length
+        ? row.filterTags.slice()
+        : deriveFilterTags(row);
       let ing = byName.get(name.toLowerCase());
       if (!ing) {
         const id = slugFoodMasterId(name, usedIds);
@@ -628,7 +874,22 @@
           source: 'food-master',
           starRoles: [],
           starValue: 0,
-          form: 'whole'
+          form: 'whole',
+          kcal: row.kcal != null && Number.isFinite(Number(row.kcal)) ? Number(row.kcal) : null,
+          difficultyRarity: String(row.difficultyRarity || '').trim() || '',
+          rarity: String(row.difficultyRarity || '').trim() || '',
+          flavor: Array.isArray(row.flavor) ? row.flavor.slice() : [],
+          shelfLife: String(row.shelfLife || '').trim(),
+          storageForm: String(row.storageForm || '').trim(),
+          servingQty: row.servingQty != null && Number.isFinite(Number(row.servingQty))
+            ? Number(row.servingQty)
+            : null,
+          servingUnit: String(row.servingUnit || '').trim(),
+          shelfStable: String(row.shelfStable || '').trim(),
+          trainFit: String(row.trainFit || '').trim(),
+          biome: String(row.biome || biomeFromRow(row) || '').trim(),
+          filterTags,
+          tags: filterTags.slice()
         };
         catalog.ingredients.push(ing);
         byName.set(name.toLowerCase(), ing);
@@ -673,6 +934,7 @@
             changed = true;
           }
         }
+        if (assignMasterDetailFields(ing, { ...row, filterTags })) changed = true;
         if (changed) updated += 1;
       }
       touched.add(ing.id);
@@ -968,7 +1230,8 @@
       try {
         const fmRes = await window.gapi.client.sheets.spreadsheets.values.get({
           spreadsheetId: masterId,
-          range: 'A1:Z'
+          // Wide range so Tags / Filter Tags / Biome beyond column Z still pull.
+          range: 'A1:CZ'
         });
         foodMasterRows = parseFoodMasterSheetValues(fmRes.result.values || []);
         status(`Food Master · ${foodMasterRows.length} item row(s)`);
@@ -1185,6 +1448,8 @@
     parseFoodMasterSheetValues,
     loadBakedFoodMasterRows,
     foodMasterRowsFromBaked,
+    deriveFilterTags,
+    splitCsvList,
     inferPaintingForm,
     inferUseKindFromMaster,
     resolveIngredientUseKind,

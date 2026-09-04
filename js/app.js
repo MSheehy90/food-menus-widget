@@ -14,6 +14,7 @@
     family: '__all__',
     stage: 'all',
     formFilter: '',
+    tagFilter: '',
     lockerSearch: '',
     dishesSearch: '',
     processSearch: '',
@@ -633,7 +634,43 @@
 
   function matchesLockerSearch(ing, q) {
     if (!q) return true;
-    return String(ing.name || '').toLowerCase().includes(q);
+    const hay = [
+      ing.name,
+      ...(Array.isArray(ing.flavor) ? ing.flavor : []),
+      ...(Array.isArray(ing.filterTags) ? ing.filterTags : (ing.tags || [])),
+      ing.difficultyRarity || ing.rarity || ''
+    ].join(' ').toLowerCase();
+    return hay.includes(q);
+  }
+
+  function ingredientFilterTags(ing) {
+    const raw = Array.isArray(ing?.filterTags)
+      ? ing.filterTags
+      : (Array.isArray(ing?.tags) ? ing.tags : []);
+    return raw.map((t) => String(t || '').trim()).filter(Boolean);
+  }
+
+  function passTagFilter(ing) {
+    if (!state.tagFilter) return true;
+    const want = String(state.tagFilter).toLowerCase();
+    return ingredientFilterTags(ing).some((t) => t.toLowerCase() === want);
+  }
+
+  /** Unique filter tags across catalog, Seasoning/Aromatic first then alpha. */
+  function collectLockerTagChipLabels() {
+    const seen = new Map();
+    (state.catalog?.ingredients || []).forEach((ing) => {
+      ingredientFilterTags(ing).forEach((t) => {
+        const key = t.toLowerCase();
+        if (!seen.has(key)) seen.set(key, t);
+      });
+    });
+    const preferred = ['Seasoning', 'Aromatic'];
+    const rest = [...seen.values()]
+      .filter((t) => !preferred.some((p) => p.toLowerCase() === t.toLowerCase()))
+      .sort((a, b) => a.localeCompare(b));
+    const head = preferred.filter((p) => seen.has(p.toLowerCase())).map((p) => seen.get(p.toLowerCase()));
+    return [...head, ...rest];
   }
 
   function rebuildProcessOutputs() {
@@ -978,6 +1015,42 @@
     });
   }
 
+  function renderTagRail() {
+    const el = $('#tag-rail');
+    if (!el) return;
+    const labels = collectLockerTagChipLabels();
+    if (!labels.length) {
+      el.innerHTML = '';
+      el.hidden = true;
+      if (state.tagFilter) state.tagFilter = '';
+      return;
+    }
+    el.hidden = false;
+    if (state.tagFilter && !labels.some((t) => t.toLowerCase() === state.tagFilter.toLowerCase())) {
+      state.tagFilter = '';
+    }
+    const chips = [
+      { key: '', label: 'All', active: !state.tagFilter },
+      ...labels.map((t) => ({
+        key: t,
+        label: t,
+        active: state.tagFilter.toLowerCase() === t.toLowerCase()
+      }))
+    ];
+    el.innerHTML = chips.map((c) => `
+      <button type="button" class="type-chip tag-chip ${c.active ? 'active' : ''}"
+        data-tag="${esc(c.key)}" aria-pressed="${c.active ? 'true' : 'false'}">${esc(c.label)}</button>
+    `).join('');
+    el.querySelectorAll('.tag-chip').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const tag = btn.dataset.tag || '';
+        state.tagFilter = tag;
+        renderTagRail();
+        renderGrid();
+      });
+    });
+  }
+
   function renderTypeRail() {
     const order = state.catalog.typeOrder;
     $('#type-rail').innerHTML = order.map((t) => `
@@ -1107,6 +1180,7 @@
       if (!ing || seen.has(ing.id)) return false;
       if (state.unlockedOnly && ing.unlocked === false) return false;
       if (!passStage(ing)) return false;
+      if (!passTagFilter(ing)) return false;
       if (!matchesLockerSearch(ing, q)) return false;
       seen.add(ing.id);
       return true;
@@ -1284,9 +1358,11 @@
     const armed = Boolean(state.armedSlotId && state.mode === 'dish');
     const emptyMsg = state.lockerSearch.trim()
       ? 'No ingredients match'
-      : (state.formFilter
-        ? `No ${state.formFilter} forms here`
-        : (state.stage !== 'all' ? `No ${state.stage} ingredients here` : 'Empty family'));
+      : (state.tagFilter
+        ? `No ${state.tagFilter} ingredients here`
+        : (state.formFilter
+          ? `No ${state.formFilter} forms here`
+          : (state.stage !== 'all' ? `No ${state.stage} ingredients here` : 'Empty family')));
     const grid = $('#ingredient-grid');
     grid.classList.toggle('slot-arming', armed);
 
@@ -1821,6 +1897,34 @@
       </div>`;
   }
 
+  function detailMasterMetaHtml(ing) {
+    if (!ing || !isCatalogIngredient(ing)) return '';
+    const chips = [];
+    const rarity = String(ing.difficultyRarity || ing.rarity || '').trim();
+    if (rarity) {
+      chips.push(`<span class="detail-meta-chip">Rarity <strong>${esc(rarity)}</strong></span>`);
+    }
+    if (ing.kcal != null && ing.kcal !== '' && Number.isFinite(Number(ing.kcal))) {
+      chips.push(`<span class="detail-meta-chip">kcal <strong>${esc(String(ing.kcal))}</strong></span>`);
+    }
+    const qty = ing.servingQty;
+    const unit = String(ing.servingUnit || '').trim();
+    if ((qty != null && qty !== '' && Number.isFinite(Number(qty))) || unit) {
+      const serving = [qty != null && qty !== '' ? String(qty) : '', unit].filter(Boolean).join(' ');
+      if (serving) {
+        chips.push(`<span class="detail-meta-chip">Serving <strong>${esc(serving)}</strong></span>`);
+      }
+    }
+    const flavors = Array.isArray(ing.flavor)
+      ? ing.flavor.map((f) => String(f || '').trim()).filter(Boolean)
+      : [];
+    flavors.forEach((f) => {
+      chips.push(`<span class="detail-meta-chip detail-flavor-chip">${esc(f)}</span>`);
+    });
+    if (!chips.length) return '';
+    return `<div class="detail-meta" aria-label="Food Master details">${chips.join('')}</div>`;
+  }
+
   function openDetail(ing, { forceChain = false } = {}) {
     const obj = resolveGalleryObject(ing) || ing?._galleryObject || null;
     if (obj && !ing._galleryObject) {
@@ -1837,6 +1941,7 @@
       <div class="detail-hero">
         <div class="big-ico">${artHtml(ing)}</div>
         ${detailNameHtml(ing, displayName)}
+        ${detailMasterMetaHtml(ing)}
         ${detailCategoryControlsHtml(ing)}
       </div>
       ${showChain ? `
@@ -4197,6 +4302,7 @@
         });
         applyDeletedArtDenylistToCatalog();
         rebuildIndexes();
+        renderTagRail();
         renderGrid();
         renderGallery();
         setDriveStatus(`Merged baked Food Master · +${stats.created} / ~${stats.updated} · live two-way needs HTTPS + Google sign-in`);
@@ -4240,6 +4346,7 @@
       state.kept = [...byId.values()];
       localStorage.setItem('food-menus-kept-v1', JSON.stringify(state.kept));
       $('#kept-count').textContent = String(state.kept.length);
+      renderTagRail();
       renderGrid();
       renderTray();
       renderGallery();
@@ -4725,6 +4832,7 @@
     state.family = '__all__';
     state.stage = 'all';
     state.formFilter = '';
+    state.tagFilter = '';
     // Default process highlight: ramen noodles (full list still browsable)
     const ramen = P().listProcessOptions(state.processData.catalog, state.processData.byOutput)
       .find((o) => o.output === 'Ramen noodles');
@@ -4732,6 +4840,7 @@
 
     renderStageRail();
     renderFormRail();
+    renderTagRail();
     renderTypeRail();
     renderFamilies();
     renderGrid();

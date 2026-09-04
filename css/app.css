@@ -754,6 +754,15 @@ button.slot-opt-chip {
   padding: 0.35rem 0.15rem; scrollbar-width: none;
 }
 .type-rail::-webkit-scrollbar, .family-tabs::-webkit-scrollbar { display: none; }
+.tag-rail {
+  padding-top: 0.1rem;
+  padding-bottom: 0.2rem;
+}
+.tag-rail .tag-chip {
+  font-size: 0.72rem;
+  min-height: 2.05rem;
+  padding: 0.32rem 0.72rem;
+}
 .type-chip, .family-tab {
   flex: 0 0 auto; min-height: 2.35rem; padding: 0.4rem 0.85rem;
   border-radius: 999px; background: var(--panel);
@@ -1351,6 +1360,11 @@ dialog::backdrop { background: rgba(10,8,6,0.75); }
 .detail-meta-chip strong {
   color: var(--ink);
   font-weight: 800;
+}
+.detail-flavor-chip {
+  text-transform: lowercase;
+  font-weight: 700;
+  color: var(--ink);
 }
 .detail-category {
   width: 100%;
