@@ -694,13 +694,29 @@
       const size = ingredientSizeClass(ing);
       const hi = highlightId && ing.id === highlightId ? 'highlight' : '';
       return `
-        <div class="ring-item art-${size} ${hi}" style="left:${x.toFixed(2)}%;top:${y.toFixed(2)}%;z-index:${idx + 2}">
+        <div class="ring-item art-${size} ${hi}" data-ing-id="${esc(ing.id)}" style="left:${x.toFixed(2)}%;top:${y.toFixed(2)}%;z-index:${idx + 2}" title="Remove ${esc(ing.name)}" role="button" tabindex="0" aria-label="Remove ${esc(ing.name)} from plate">
           ${artHtml(ing)}
         </div>`;
     }).join('');
     el.innerHTML = `${center}${ring}`;
     el.classList.toggle('has-ring', n > 0);
     enhanceArtImages(el);
+  }
+
+  function wirePlateRingRemove(stack) {
+    if (!stack) return;
+    stack.querySelectorAll('.ring-item[data-ing-id]').forEach((item) => {
+      const remove = () => removeFromPlate(item.dataset.ingId);
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        remove();
+      });
+      item.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        remove();
+      });
+    });
   }
 
   function setPlateCenter(stack, file, alt) {
@@ -853,6 +869,13 @@
     $('#meters-dialog').showModal();
   }
 
+  function removeFromPlate(ingId) {
+    if (!ingId || !selectedIds().has(ingId)) return;
+    state.selected = state.selected.filter((x) => x.id !== ingId);
+    renderTray();
+    renderGrid();
+  }
+
   function renderRecipeList(ingredients) {
     const el = $('#recipe-list');
     if (!el) return;
@@ -869,6 +892,7 @@
         <span class="recipe-ico">${artHtml(ing)}</span>
         <span class="recipe-qty">${esc(servingLabel(ing))}</span>
         <span class="recipe-name">${esc(ing.name)}</span>
+        <button type="button" class="recipe-row-remove" data-remove-ing="${esc(ing.id)}" aria-label="Remove ${esc(ing.name)} from plate">✕</button>
       </li>
     `).join('');
     el.querySelectorAll('.recipe-row').forEach((row) => {
@@ -879,10 +903,17 @@
         e.dataTransfer.effectAllowed = 'move';
       });
       row.addEventListener('dragend', () => row.classList.remove('dragging'));
-      row.addEventListener('click', () => {
+      row.addEventListener('click', (e) => {
+        if (e.target.closest('.recipe-row-remove')) return;
         if (!state.armedSlotId) return;
         const ing = state.byId.get(row.dataset.ingId);
         if (ing) addOptionToSlot(state.armedSlotId, ing, { moveOffPlate: true });
+      });
+    });
+    el.querySelectorAll('[data-remove-ing]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeFromPlate(btn.dataset.removeIng);
       });
     });
     enhanceArtImages(el);
@@ -1992,6 +2023,7 @@
       restaurantId: state.restaurantId,
       style: legality().style
     });
+    wirePlateRingRemove(stack);
     renderRecipeList(state.selected);
     renderSlots();
     syncRestaurantFromPlate();
