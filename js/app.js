@@ -1346,28 +1346,28 @@
     const newInput = $('#detail-new-family');
     if (!typeSel || !famSel) return;
 
+    let committing = false;
     const commitNewFamily = () => {
+      if (committing) return;
       const name = String(newInput?.value || '').trim();
       if (!name) return;
-      const type = typeSel.value;
-      applyIngredientCategory(ing.id, type, name);
+      committing = true;
+      applyIngredientCategory(ing.id, typeSel.value, name);
       refreshOpenDetail(ing, { forceChain });
     };
 
     typeSel.addEventListener('change', () => {
       const type = typeSel.value;
-      const family = famSel.value === DETAIL_NEW_FAMILY
-        ? String(newInput?.value || '').trim() || (state.byId.get(ing.id)?.uiFamily || '')
-        : famSel.value;
       if (famSel.value === DETAIL_NEW_FAMILY && !String(newInput?.value || '').trim()) {
-        // Type changed while "new family" is open — rebuild family list for the new type,
-        // keep new-family UI; apply type with existing family until she names one.
         const catalogIng = state.byId.get(ing.id);
         const keepFamily = catalogIng?.uiFamily || catalogIng?.category || 'Misc';
         applyIngredientCategory(ing.id, type, keepFamily);
         refreshOpenDetail(ing, { forceChain });
         return;
       }
+      const family = famSel.value === DETAIL_NEW_FAMILY
+        ? String(newInput?.value || '').trim()
+        : famSel.value;
       applyIngredientCategory(ing.id, type, family || 'Misc');
       refreshOpenDetail(ing, { forceChain });
     });
