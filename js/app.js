@@ -1494,12 +1494,21 @@
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
+        e.stopPropagation();
         input.blur();
       } else if (e.key === 'Escape') {
         e.preventDefault();
+        e.stopPropagation();
         const catalog = state.byId.get(ing.id);
         input.value = String(catalog?.name || '').trim();
         input.blur();
+      }
+    });
+    // Keep Enter from submitting the method=dialog form (would close + Add).
+    input.addEventListener('keyup', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
       }
     });
     input.addEventListener('blur', commit);
