@@ -1157,6 +1157,34 @@ dialog::backdrop { background: rgba(10,8,6,0.75); }
   text-align: center;
   line-height: 1.2;
 }
+.detail-name-field {
+  display: block;
+  width: 100%;
+  max-width: 18rem;
+  margin: 0;
+}
+.detail-name-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--tap);
+  margin: 0;
+  padding: 0.4rem 0.65rem;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #1a1410;
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 1.05rem;
+  font-weight: 800;
+  text-align: center;
+  line-height: 1.2;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.detail-name-input:focus {
+  outline: 1px solid var(--accent);
+  border-color: var(--accent);
+}
 .detail-meta {
   margin: 0.35rem 0 0;
   display: flex;

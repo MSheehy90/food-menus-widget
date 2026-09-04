@@ -377,7 +377,10 @@
   function hydrateIngredients(list) {
     return (list || []).map((row) => {
       const full = state.byId.get(row.id);
-      return full ? { ...full, ...row, art: row.art || full.art || '' } : row;
+      // Prefer live catalog name so renames resolve on plate / kept dishes.
+      return full
+        ? { ...full, ...row, name: full.name || row.name, art: row.art || full.art || '' }
+        : row;
     });
   }
 
@@ -586,6 +589,7 @@
   }
 
   function resolveChainIngs(ing) {
+    if (!ing) return [];
     const names = ing.chain?.length ? ing.chain : [ing.name];
     return names.map((n) => state.byName.get(String(n).toLowerCase()) || { name: n, art: '', id: n });
   }
@@ -1167,17 +1171,35 @@
     });
   }
 
+  function catalogIngredientById(id) {
+    if (!id) return null;
+    return state.byId.get(id)
+      || (state.catalog?.ingredients || []).find((ing) => ing.id === id)
+      || null;
+  }
+
+  function isCatalogIngredient(ing) {
+    return Boolean(ing?.id && catalogIngredientById(ing.id));
+  }
+
   function bindTileGestures(btn, ing) {
+    const open = () => {
+      const live = catalogIngredientById(btn.dataset.id) || catalogIngredientById(ing?.id) || ing;
+      if (!live) return;
+      openDetail(live, { forceChain: true });
+    };
     bindPressOpenDetail(
       btn,
-      () => openDetail(ing, { forceChain: true }),
+      open,
       {
         onSingleTap: () => {
+          const live = catalogIngredientById(btn.dataset.id) || catalogIngredientById(ing?.id) || ing;
+          if (!live) return;
           if (state.armedSlotId && state.mode === 'dish') {
-            addOptionToSlot(state.armedSlotId, ing, { moveOffPlate: false });
+            addOptionToSlot(state.armedSlotId, live, { moveOffPlate: false });
             return;
           }
-          addToPlate(ing);
+          addToPlate(live);
         }
       }
     );
@@ -1185,7 +1207,7 @@
     // drag onto plate / slot (desktop)
     btn.addEventListener('dragstart', (e) => {
       btn.classList.add('dragging');
-      e.dataTransfer.setData('text/ing-id', ing.id);
+      e.dataTransfer.setData('text/ing-id', btn.dataset.id || ing?.id || '');
       e.dataTransfer.effectAllowed = 'copy';
     });
     btn.addEventListener('dragend', () => btn.classList.remove('dragging'));
@@ -1302,7 +1324,7 @@
 
   /** Type + Family + Kind selects for catalog ingredients only (drives locker placement). */
   function detailCategoryControlsHtml(ing) {
-    if (!ing?.id || !state.byId.has(ing.id)) return '';
+    if (!isCatalogIngredient(ing)) return '';
     const curType = String(ing.uiType || ing.group || '').trim() || 'Other';
     const curFamily = String(ing.uiFamily || ing.category || '').trim();
     const curKind = ingredientUseKind(ing);
@@ -1349,7 +1371,7 @@
   }
 
   function applyIngredientCategory(ingId, uiType, uiFamily) {
-    const ing = state.byId.get(ingId);
+    const ing = catalogIngredientById(ingId);
     if (!ing) return null;
     const type = String(uiType || '').trim() || 'Other';
     const family = String(uiFamily || '').trim() || 'Misc';
@@ -1368,7 +1390,7 @@
   }
 
   function applyIngredientUseKind(ingId, useKind) {
-    const ing = state.byId.get(ingId);
+    const ing = catalogIngredientById(ingId);
     if (!ing) return null;
     const next = Sync().normalizeUseKind
       ? Sync().normalizeUseKind(useKind)
@@ -1381,16 +1403,138 @@
     return ing;
   }
 
+  /** Migrate face-art + flag metadata when objectKey changes with a rename. */
+  function migrateObjectKeyMeta(oldName, newName) {
+    const oldKey = objectKeyFromLabel(oldName);
+    const newKey = objectKeyFromLabel(newName);
+    if (!oldKey || !newKey || oldKey === newKey) return;
+
+    const faceMap = loadFaceArtMap();
+    if (faceMap[oldKey]) {
+      if (!faceMap[newKey]) faceMap[newKey] = faceMap[oldKey];
+      delete faceMap[oldKey];
+      saveFaceArtMap(faceMap);
+    }
+
+    const flagMap = loadFlaggedArtMap();
+    let flagsDirty = false;
+    Object.keys(flagMap).forEach((path) => {
+      const meta = flagMap[path];
+      if (!meta) return;
+      if (meta.objectKey === oldKey) {
+        meta.objectKey = newKey;
+        flagsDirty = true;
+      }
+      if (meta.label && String(meta.label).trim() === String(oldName).trim()) {
+        meta.label = newName;
+        flagsDirty = true;
+      }
+    });
+    if (flagsDirty) saveFlaggedArtMap(flagMap);
+  }
+
+  function applyIngredientName(ingId, nextName) {
+    const ing = catalogIngredientById(ingId);
+    if (!ing) return null;
+    const name = String(nextName || '').trim();
+    if (!name) return null;
+    const oldName = String(ing.name || '').trim();
+    if (name === oldName) return ing;
+
+    const clash = state.byName.get(name.toLowerCase());
+    if (clash && clash.id !== ingId) return null;
+
+    migrateObjectKeyMeta(oldName, name);
+    ing.name = name;
+    if (Array.isArray(ing.chain) && ing.chain.length) {
+      ing.chain = ing.chain.map((c) => (String(c) === oldName ? name : c));
+    } else {
+      ing.chain = [name];
+    }
+    persistIngredientMeta(ing);
+    rebuildIndexes();
+    renderGrid();
+    renderTray();
+    renderGallery();
+    return ing;
+  }
+
   function refreshOpenDetail(ing, { forceChain = false } = {}) {
-    const catalog = ing?.id ? state.byId.get(ing.id) : null;
+    const catalog = ing?.id ? catalogIngredientById(ing.id) : null;
     const base = catalog || ing;
     if (!base) return;
     const next = resolveGalleryObject({ ...base, name: base.name, art: base.art, _galleryObject: null });
     openDetail(next ? (ingredientForGalleryItem(next) || base) : base, { forceChain });
   }
 
+  function detailNameHtml(ing, displayName) {
+    const inCatalog = isCatalogIngredient(ing);
+    if (!inCatalog) {
+      return `<p class="detail-name">${esc(displayName)}</p>`;
+    }
+    return `
+      <label class="detail-name-field" for="detail-food-name">
+        <span class="sr-only">Name</span>
+        <input type="text" class="detail-name-input" id="detail-food-name"
+          value="${esc(displayName)}" maxlength="64" autocomplete="off"
+          enterkeyhint="done" aria-label="Food name" />
+      </label>`;
+  }
+
+  function bindDetailNameControl(ing, { forceChain = false } = {}) {
+    if (!isCatalogIngredient(ing)) return;
+    const input = $('#detail-food-name');
+    if (!input) return;
+
+    let committing = false;
+    const commit = () => {
+      if (committing) return;
+      const next = String(input.value || '').trim();
+      const catalog = catalogIngredientById(ing.id);
+      const current = String(catalog?.name || '').trim();
+      if (!next) {
+        input.value = current;
+        return;
+      }
+      if (next === current) {
+        input.value = current;
+        return;
+      }
+      const clash = state.byName.get(next.toLowerCase());
+      if (clash && clash.id !== ing.id) {
+        input.value = current;
+        return;
+      }
+      committing = true;
+      applyIngredientName(ing.id, next);
+      refreshOpenDetail(ing, { forceChain });
+    };
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        input.blur();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        const catalog = catalogIngredientById(ing.id);
+        input.value = String(catalog?.name || '').trim();
+        input.blur();
+      }
+    });
+    // Keep Enter from submitting the method=dialog form (would close + Add).
+    input.addEventListener('keyup', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    });
+    input.addEventListener('blur', commit);
+  }
+
   function bindDetailCategoryControls(ing, { forceChain = false } = {}) {
-    if (!ing?.id || !state.byId.has(ing.id)) return;
+    if (!isCatalogIngredient(ing)) return;
     const typeSel = $('#detail-ui-type');
     const famSel = $('#detail-ui-family');
     const kindSel = $('#detail-use-kind');
@@ -1412,7 +1556,7 @@
     typeSel.addEventListener('change', () => {
       const type = typeSel.value;
       if (famSel.value === DETAIL_NEW_FAMILY && !String(newInput?.value || '').trim()) {
-        const catalogIng = state.byId.get(ing.id);
+        const catalogIng = catalogIngredientById(ing.id);
         const keepFamily = catalogIng?.uiFamily || catalogIng?.category || 'Misc';
         applyIngredientCategory(ing.id, type, keepFamily);
         refreshOpenDetail(ing, { forceChain });
@@ -1645,7 +1789,7 @@
     }
     state.detailIng = ing;
     const onPlate = ing?.id && selectedIds().has(ing.id);
-    const inCatalog = Boolean(ing?.id && state.byId.has(ing.id));
+    const inCatalog = isCatalogIngredient(ing);
     const chain = resolveChainIngs(ing);
     const showChain = forceChain || isMade(ing) || chain.length > 1;
     const displayName = obj?.title || sharedArtNames(ing)[0] || ing?.name || '';
@@ -1653,7 +1797,7 @@
     $('#detail-body').innerHTML = `
       <div class="detail-hero">
         <div class="big-ico">${artHtml(ing)}</div>
-        <p class="detail-name">${esc(displayName)}</p>
+        ${detailNameHtml(ing, displayName)}
         ${detailCategoryControlsHtml(ing)}
       </div>
       ${showChain ? `
@@ -1830,6 +1974,7 @@
       }
     });
 
+    bindDetailNameControl(ing, { forceChain });
     bindDetailCategoryControls(ing, { forceChain });
 
     enhanceArtImages($('#detail-body'));
@@ -3071,14 +3216,30 @@
   }
 
   function pickObjectTitle(ings, fileLabels, faceArt) {
+    const catalogLabels = [];
+    (ings || []).forEach((ing) => {
+      const n = String(ing?.name || '').trim();
+      if (n) catalogLabels.push(n);
+    });
+    // Catalog display name wins over filename stem so renames (e.g. Udon noodle) stick.
+    if (catalogLabels.length) {
+      const rankedCat = catalogLabels.slice().sort((a, b) => {
+        const sa = scoreFaceCandidate({ art: faceArt, label: a, fromCatalog: true });
+        const sb = scoreFaceCandidate({ art: faceArt, label: b, fromCatalog: true });
+        if (sb !== sa) return sb - sa;
+        return a.localeCompare(b);
+      });
+      const nonForm = rankedCat.find((n) => !isFormishLabel(n));
+      return nonForm || rankedCat[0];
+    }
+
     const labels = [];
-    (ings || []).forEach((ing) => { if (ing?.name) labels.push(String(ing.name)); });
     (fileLabels || []).forEach((n) => { if (n) labels.push(String(n)); });
     if (!labels.length) return humanizeArtStem(artStem(faceArt)) || 'Untitled';
     const stemTitle = humanizeArtStem(artStem(faceArt)).toLowerCase();
     const ranked = labels.slice().sort((a, b) => {
-      const sa = scoreFaceCandidate({ art: faceArt, label: a, fromCatalog: true });
-      const sb = scoreFaceCandidate({ art: faceArt, label: b, fromCatalog: true });
+      const sa = scoreFaceCandidate({ art: faceArt, label: a, fromCatalog: false });
+      const sb = scoreFaceCandidate({ art: faceArt, label: b, fromCatalog: false });
       if (sb !== sa) return sb - sa;
       return a.localeCompare(b);
     });
@@ -4331,7 +4492,7 @@
 
     $('#detail-dialog').addEventListener('close', () => {
       if ($('#detail-dialog').returnValue === 'toggle' && state.detailIng) {
-        if (!state.byId.has(state.detailIng.id)) return;
+        if (!isCatalogIngredient(state.detailIng)) return;
         if (state.armedSlotId && state.mode === 'dish') {
           addOptionToSlot(state.armedSlotId, state.detailIng, { moveOffPlate: false });
         } else {
@@ -4366,6 +4527,8 @@
       state.fiveStarArt = null;
     }
 
+    // Index immediately so locker/details work even if Drive sign-in/pull is slow.
+    rebuildIndexes();
     await Sync().boot(state.catalog, {
       onStatus: setDriveStatus,
       tryPull: Sync().hasClientId()

@@ -9803,7 +9803,7 @@
     },
     {
       "id": "thick-white-noodles",
-      "name": "Thick white noodles",
+      "name": "Udon noodle",
       "group": "Grain",
       "pyramid": "Grains",
       "category": "Noodles",
@@ -9826,7 +9826,7 @@
       "uiFamily": "Noodle",
       "processed": true,
       "chain": [
-        "Thick white noodles"
+        "Udon noodle"
       ],
       "art": "assets/dishes/5star/tiles/thick-white-noodles.png",
       "unlocked": true,
