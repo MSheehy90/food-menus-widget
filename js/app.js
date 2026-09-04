@@ -24,6 +24,7 @@
     detailIng: null,
     galleryMode: 'have',
     gallerySearch: '',
+    galleryType: '__all__',
     artFiles: [],
     longPressTimer: null,
     dishName: '',
@@ -2422,6 +2423,18 @@
         });
         const legal = S.detectStyle(ings.map((i) => i.name));
         const score = ings.length ? S.scoreDish(ings, state.catalog) : null;
+        // Alternate slot choices (not plated) — footnote only for true flexible/substitute slots
+        const menuSlotAlts = (fam.slots || []).map((slot) => {
+          if (!slot.substituteGroup && !(slot.choices || []).length) return null;
+          // Keep notes light: only slots with substitute groups (flexible), not every choice list
+          if (!slot.substituteGroup) return null;
+          const alts = (slot.choices || [])
+            .map((row) => (Array.isArray(row) ? row[0] : row))
+            .filter((n) => n && n !== slot.defaultChoice)
+            .slice(0, 4);
+          if (!alts.length) return null;
+          return { label: slot.label || slot.id || 'Slot', alts };
+        }).filter(Boolean);
         out.push({
           id: `starter:${rest.id}:${fam.id}`,
           name: fam.label,
@@ -2430,7 +2443,8 @@
           source: 'shop',
           style: legal?.style || 'general',
           score,
-          ingredients: ings
+          ingredients: ings,
+          menuSlotAlts
         });
       });
     });
@@ -2468,16 +2482,66 @@
       : `Loaded “${state.dishName}”`);
   }
 
-  function dishCardHtml(d, { key, kind }) {
+  /** Complete = plated with ≥2 ingredients (matches Create dish gate; skip empty plates). */
+  function isCompleteDish(d) {
+    const ings = hydrateIngredients(d.ingredients || []).filter(Boolean);
+    return ings.length >= 2;
+  }
+
+  /** Ingredients shown on the right of dish = a + b + … (this plate only, not every slot combo). */
+  function dishEquationIngredients(d) {
+    return sortedPlate(hydrateIngredients(d.ingredients || []).filter(Boolean));
+  }
+
+  /** Light slot-alternative footnote — never explode into extra equation rows. */
+  function dishSlotNotes(d) {
+    const notes = [];
+    const slots = normalizeRecipeSlots(d.slots);
+    if (slots.length) {
+      slots.forEach((slot) => {
+        const opts = (slot.optionIds || []).map((id) => state.byId.get(id)).filter(Boolean);
+        if (opts.length <= 1) return;
+        const names = opts.map((o) => o.name).filter(Boolean).slice(0, 4);
+        if (names.length) notes.push({ label: slot.label || slot.type || 'Slot', alts: names });
+      });
+      return notes;
+    }
+    // Shop menus: other choices besides the default plated set
+    (d.menuSlotAlts || []).forEach((row) => {
+      if (row?.alts?.length) notes.push(row);
+    });
+    return notes;
+  }
+
+  function dishEquationHtml(d, { key, kind }) {
     const shop = d.restaurant || restaurantById(d.restaurantId)?.name || '';
-    const stars = d.score?.stars?.display || '';
+    const ings = dishEquationIngredients(d);
+    const notes = dishSlotNotes(d);
+    const parts = ings.map((ing, i) => {
+      const plus = i ? `<span class="dish-eq-plus" aria-hidden="true">+</span>` : '';
+      return `${plus}
+        <span class="dish-eq-ing" title="${esc(ing.name)}">
+          <span class="dish-eq-ing-art">${artHtml(ing)}</span>
+          <span class="dish-eq-ing-name">${esc(ing.name)}</span>
+        </span>`;
+    }).join('');
+    const noteHtml = notes.length
+      ? `<p class="dish-eq-slots">${notes.map((n) =>
+          `<span class="dish-eq-slot-note"><span class="dish-eq-slot-label">${esc(n.label)}</span> also ${esc(n.alts.join(' · '))}</span>`
+        ).join('')}</p>`
+      : '';
     return `
-      <button type="button" class="dish-browse-card" data-kind="${esc(kind)}" data-key="${esc(key)}">
-        <div class="mini-plate" data-dish-stack="${esc(kind)}-${esc(key)}"></div>
-        <div class="dish-browse-meta">
-          <span class="dish-browse-name">${esc(d.name || 'Untitled')}</span>
-          ${shop ? `<span class="dish-browse-shop">${esc(shop)}</span>` : ''}
-          ${stars ? `<span class="dish-browse-stars">${esc(stars)}</span>` : ''}
+      <button type="button" class="dish-eq-row" data-kind="${esc(kind)}" data-key="${esc(key)}"
+        aria-label="${esc((d.name || 'Dish') + ' equals ' + ings.map((i) => i.name).join(' plus '))}">
+        <div class="dish-eq-left">
+          <div class="mini-plate dish-eq-plate" data-dish-stack="${esc(kind)}-${esc(key)}"></div>
+          <span class="dish-eq-name">${esc(d.name || 'Untitled')}</span>
+          ${shop ? `<span class="dish-eq-shop">${esc(shop)}</span>` : ''}
+        </div>
+        <span class="dish-eq-equals" aria-hidden="true">=</span>
+        <div class="dish-eq-right">
+          ${parts || `<span class="muted dish-eq-empty-ings">No ingredients</span>`}
+          ${noteHtml}
         </div>
       </button>`;
   }
@@ -2492,19 +2556,21 @@
       return hay.includes(q);
     };
 
-    const kept = state.kept.filter(match);
-    const starters = buildShopStarters().filter(match);
+    const kept = state.kept.filter(isCompleteDish).filter(match);
+    const starters = buildShopStarters().filter(isCompleteDish).filter(match);
 
     el.innerHTML = `
       <section class="dishes-section">
         <h2 class="dishes-heading">Your plates</h2>
         ${kept.length
-          ? `<div class="dishes-grid">${kept.map((d, i) => dishCardHtml(d, { key: String(i), kind: 'kept' })).join('')}</div>`
-          : `<p class="muted dishes-empty">No kept plates yet — Create dish or pick a shop starter</p>`}
+          ? `<div class="dishes-eq-list">${kept.map((d, i) => dishEquationHtml(d, { key: String(i), kind: 'kept' })).join('')}</div>`
+          : `<p class="muted dishes-empty">No complete plates yet — Create dish or pick a shop starter</p>`}
       </section>
       <section class="dishes-section">
         <h2 class="dishes-heading">Shop starters</h2>
-        <div class="dishes-grid">${starters.map((d, i) => dishCardHtml(d, { key: String(i), kind: 'shop' })).join('')}</div>
+        ${starters.length
+          ? `<div class="dishes-eq-list">${starters.map((d, i) => dishEquationHtml(d, { key: String(i), kind: 'shop' })).join('')}</div>`
+          : `<p class="muted dishes-empty">No shop dishes match</p>`}
       </section>
     `;
 
@@ -2527,7 +2593,9 @@
       });
     });
 
-    el.querySelectorAll('.dish-browse-card').forEach((btn) => {
+    enhanceArtImages(el);
+
+    el.querySelectorAll('.dish-eq-row').forEach((btn) => {
       btn.addEventListener('click', () => {
         const kind = btn.dataset.kind;
         const idx = Number(btn.dataset.key);
@@ -3689,6 +3757,71 @@
     return it.uiFamily || it.category || (it.kind === 'named-file' ? 'Extras' : 'Other');
   }
 
+  /** Distinct section labels (Family / Type grouping) present in the painted set, scroll order. */
+  function paintedTypeLabels(items) {
+    const seen = new Set();
+    const out = [];
+    (items || []).forEach((it) => {
+      const label = paintedSectionLabel(it);
+      if (!label || seen.has(label)) return;
+      seen.add(label);
+      out.push(label);
+    });
+    return out;
+  }
+
+  function galleryItemsMatchSearch(it) {
+    return galleryQueryMatch(it.title) ||
+      galleryQueryMatch(artStem(it.art)) ||
+      galleryQueryMatch(humanizeArtStem(artStem(it.art))) ||
+      galleryQueryMatch(it.uiType) ||
+      galleryQueryMatch(it.uiFamily) ||
+      galleryQueryMatch(it.category) ||
+      (it.names || []).some((n) => galleryQueryMatch(n));
+  }
+
+  function passGalleryType(it) {
+    if (state.galleryType === '__all__') return true;
+    return paintedSectionLabel(it) === state.galleryType;
+  }
+
+  function renderGalleryTypeRail(itemsForChips) {
+    const rail = $('#gallery-type-rail');
+    if (!rail) return;
+    const show = state.galleryMode === 'have';
+    rail.hidden = !show;
+    if (!show) return;
+
+    const labels = paintedTypeLabels(itemsForChips);
+    if (state.galleryType !== '__all__' && !labels.includes(state.galleryType)) {
+      state.galleryType = '__all__';
+    }
+
+    const chips = [
+      {
+        key: '__all__',
+        label: 'All types',
+        active: state.galleryType === '__all__'
+      },
+      ...labels.map((t) => ({
+        key: t,
+        label: t,
+        active: state.galleryType === t
+      }))
+    ];
+
+    rail.innerHTML = chips.map((c) => `
+      <button type="button" class="type-chip ${c.active ? 'active' : ''}" data-gal-type="${esc(c.key)}" aria-pressed="${c.active ? 'true' : 'false'}">${esc(c.label)}</button>
+    `).join('');
+
+    rail.querySelectorAll('.type-chip').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        state.galleryType = btn.dataset.galType || '__all__';
+        renderGallery();
+      });
+    });
+  }
+
   function ingredientForGalleryItem(it) {
     if (!it) return null;
     if (it.kind === 'object') {
@@ -3825,21 +3958,16 @@
     grid.classList.toggle('gallery-flagged', state.galleryMode === 'flag');
 
     if (state.galleryMode === 'have') {
-      const items = paintedGalleryItems().filter((it) =>
-        galleryQueryMatch(it.title) ||
-        galleryQueryMatch(artStem(it.art)) ||
-        galleryQueryMatch(humanizeArtStem(artStem(it.art))) ||
-        galleryQueryMatch(it.uiType) ||
-        galleryQueryMatch(it.uiFamily) ||
-        galleryQueryMatch(it.category) ||
-        (it.names || []).some((n) => galleryQueryMatch(n))
-      );
+      const searched = paintedGalleryItems().filter(galleryItemsMatchSearch);
+      // Chips from search-matched set (before type filter) so types stay discoverable while searching.
+      renderGalleryTypeRail(searched);
+      const items = searched.filter(passGalleryType);
       if (!items.length) {
         grid.innerHTML = `<p class="muted" style="grid-column:1/-1;text-align:center">None</p>`;
         return;
       }
       const groups = groupInOrder(items, paintedSectionLabel);
-      const showHeads = groups.length > 1;
+      const showHeads = groups.length > 1 || state.galleryType !== '__all__';
       grid.innerHTML = groups.map(({ key, items: list }) => `
         ${showHeads ? sectionHeadHtml(key) : ''}
         ${list.map((it) => {
@@ -3869,6 +3997,7 @@
     }
 
     if (state.galleryMode === 'untitled') {
+      renderGalleryTypeRail([]);
       const files = untitledArtFiles().filter((path) => {
         const stem = artStem(path);
         return galleryQueryMatch(stem) || galleryQueryMatch(path);
@@ -3905,6 +4034,7 @@
     }
 
     if (state.galleryMode === 'flag') {
+      renderGalleryTypeRail([]);
       const entries = flaggedArtEntries().filter((e) =>
         galleryQueryMatch(e.label) ||
         galleryQueryMatch(e.kind) ||
@@ -3973,6 +4103,7 @@
       return;
     }
 
+    renderGalleryTypeRail([]);
     const missing = missingArtIngredients()
       .filter((ing) => galleryQueryMatch(ing.name) || galleryQueryMatch(ing.uiType || ing.group) || galleryQueryMatch(ing.uiFamily || ing.category));
 
