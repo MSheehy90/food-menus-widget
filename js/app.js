@@ -589,6 +589,7 @@
   }
 
   function resolveChainIngs(ing) {
+    if (!ing) return [];
     const names = ing.chain?.length ? ing.chain : [ing.name];
     return names.map((n) => state.byName.get(String(n).toLowerCase()) || { name: n, art: '', id: n });
   }
@@ -1170,17 +1171,35 @@
     });
   }
 
+  function catalogIngredientById(id) {
+    if (!id) return null;
+    return state.byId.get(id)
+      || (state.catalog?.ingredients || []).find((ing) => ing.id === id)
+      || null;
+  }
+
+  function isCatalogIngredient(ing) {
+    return Boolean(ing?.id && catalogIngredientById(ing.id));
+  }
+
   function bindTileGestures(btn, ing) {
+    const open = () => {
+      const live = catalogIngredientById(btn.dataset.id) || catalogIngredientById(ing?.id) || ing;
+      if (!live) return;
+      openDetail(live, { forceChain: true });
+    };
     bindPressOpenDetail(
       btn,
-      () => openDetail(ing, { forceChain: true }),
+      open,
       {
         onSingleTap: () => {
+          const live = catalogIngredientById(btn.dataset.id) || catalogIngredientById(ing?.id) || ing;
+          if (!live) return;
           if (state.armedSlotId && state.mode === 'dish') {
-            addOptionToSlot(state.armedSlotId, ing, { moveOffPlate: false });
+            addOptionToSlot(state.armedSlotId, live, { moveOffPlate: false });
             return;
           }
-          addToPlate(ing);
+          addToPlate(live);
         }
       }
     );
@@ -1188,7 +1207,7 @@
     // drag onto plate / slot (desktop)
     btn.addEventListener('dragstart', (e) => {
       btn.classList.add('dragging');
-      e.dataTransfer.setData('text/ing-id', ing.id);
+      e.dataTransfer.setData('text/ing-id', btn.dataset.id || ing?.id || '');
       e.dataTransfer.effectAllowed = 'copy';
     });
     btn.addEventListener('dragend', () => btn.classList.remove('dragging'));
@@ -1305,7 +1324,7 @@
 
   /** Type + Family + Kind selects for catalog ingredients only (drives locker placement). */
   function detailCategoryControlsHtml(ing) {
-    if (!ing?.id || !state.byId.has(ing.id)) return '';
+    if (!isCatalogIngredient(ing)) return '';
     const curType = String(ing.uiType || ing.group || '').trim() || 'Other';
     const curFamily = String(ing.uiFamily || ing.category || '').trim();
     const curKind = ingredientUseKind(ing);
@@ -1352,7 +1371,7 @@
   }
 
   function applyIngredientCategory(ingId, uiType, uiFamily) {
-    const ing = state.byId.get(ingId);
+    const ing = catalogIngredientById(ingId);
     if (!ing) return null;
     const type = String(uiType || '').trim() || 'Other';
     const family = String(uiFamily || '').trim() || 'Misc';
@@ -1371,7 +1390,7 @@
   }
 
   function applyIngredientUseKind(ingId, useKind) {
-    const ing = state.byId.get(ingId);
+    const ing = catalogIngredientById(ingId);
     if (!ing) return null;
     const next = Sync().normalizeUseKind
       ? Sync().normalizeUseKind(useKind)
@@ -1415,7 +1434,7 @@
   }
 
   function applyIngredientName(ingId, nextName) {
-    const ing = state.byId.get(ingId);
+    const ing = catalogIngredientById(ingId);
     if (!ing) return null;
     const name = String(nextName || '').trim();
     if (!name) return null;
@@ -1441,7 +1460,7 @@
   }
 
   function refreshOpenDetail(ing, { forceChain = false } = {}) {
-    const catalog = ing?.id ? state.byId.get(ing.id) : null;
+    const catalog = ing?.id ? catalogIngredientById(ing.id) : null;
     const base = catalog || ing;
     if (!base) return;
     const next = resolveGalleryObject({ ...base, name: base.name, art: base.art, _galleryObject: null });
@@ -1449,7 +1468,7 @@
   }
 
   function detailNameHtml(ing, displayName) {
-    const inCatalog = Boolean(ing?.id && state.byId.has(ing.id));
+    const inCatalog = isCatalogIngredient(ing);
     if (!inCatalog) {
       return `<p class="detail-name">${esc(displayName)}</p>`;
     }
@@ -1463,7 +1482,7 @@
   }
 
   function bindDetailNameControl(ing, { forceChain = false } = {}) {
-    if (!ing?.id || !state.byId.has(ing.id)) return;
+    if (!isCatalogIngredient(ing)) return;
     const input = $('#detail-food-name');
     if (!input) return;
 
@@ -1471,7 +1490,7 @@
     const commit = () => {
       if (committing) return;
       const next = String(input.value || '').trim();
-      const catalog = state.byId.get(ing.id);
+      const catalog = catalogIngredientById(ing.id);
       const current = String(catalog?.name || '').trim();
       if (!next) {
         input.value = current;
@@ -1499,7 +1518,7 @@
       } else if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
-        const catalog = state.byId.get(ing.id);
+        const catalog = catalogIngredientById(ing.id);
         input.value = String(catalog?.name || '').trim();
         input.blur();
       }
@@ -1515,7 +1534,7 @@
   }
 
   function bindDetailCategoryControls(ing, { forceChain = false } = {}) {
-    if (!ing?.id || !state.byId.has(ing.id)) return;
+    if (!isCatalogIngredient(ing)) return;
     const typeSel = $('#detail-ui-type');
     const famSel = $('#detail-ui-family');
     const kindSel = $('#detail-use-kind');
@@ -1537,7 +1556,7 @@
     typeSel.addEventListener('change', () => {
       const type = typeSel.value;
       if (famSel.value === DETAIL_NEW_FAMILY && !String(newInput?.value || '').trim()) {
-        const catalogIng = state.byId.get(ing.id);
+        const catalogIng = catalogIngredientById(ing.id);
         const keepFamily = catalogIng?.uiFamily || catalogIng?.category || 'Misc';
         applyIngredientCategory(ing.id, type, keepFamily);
         refreshOpenDetail(ing, { forceChain });
@@ -1770,7 +1789,7 @@
     }
     state.detailIng = ing;
     const onPlate = ing?.id && selectedIds().has(ing.id);
-    const inCatalog = Boolean(ing?.id && state.byId.has(ing.id));
+    const inCatalog = isCatalogIngredient(ing);
     const chain = resolveChainIngs(ing);
     const showChain = forceChain || isMade(ing) || chain.length > 1;
     const displayName = obj?.title || sharedArtNames(ing)[0] || ing?.name || '';
@@ -4473,7 +4492,7 @@
 
     $('#detail-dialog').addEventListener('close', () => {
       if ($('#detail-dialog').returnValue === 'toggle' && state.detailIng) {
-        if (!state.byId.has(state.detailIng.id)) return;
+        if (!isCatalogIngredient(state.detailIng)) return;
         if (state.armedSlotId && state.mode === 'dish') {
           addOptionToSlot(state.armedSlotId, state.detailIng, { moveOffPlate: false });
         } else {
@@ -4508,6 +4527,8 @@
       state.fiveStarArt = null;
     }
 
+    // Index immediately so locker/details work even if Drive sign-in/pull is slow.
+    rebuildIndexes();
     await Sync().boot(state.catalog, {
       onStatus: setDriveStatus,
       tryPull: Sync().hasClientId()
