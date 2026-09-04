@@ -694,7 +694,7 @@
       const size = ingredientSizeClass(ing);
       const hi = highlightId && ing.id === highlightId ? 'highlight' : '';
       return `
-        <div class="ring-item art-${size} ${hi}" data-ing-id="${esc(ing.id)}" style="left:${x.toFixed(2)}%;top:${y.toFixed(2)}%;z-index:${idx + 2}" title="Remove ${esc(ing.name)}" role="button" tabindex="0" aria-label="Remove ${esc(ing.name)} from plate">
+        <div class="ring-item art-${size} ${hi}" data-ing-id="${esc(ing.id)}" style="left:${x.toFixed(2)}%;top:${y.toFixed(2)}%;z-index:${idx + 2}">
           ${artHtml(ing)}
         </div>`;
     }).join('');
@@ -706,7 +706,14 @@
   function wirePlateRingRemove(stack) {
     if (!stack) return;
     stack.querySelectorAll('.ring-item[data-ing-id]').forEach((item) => {
-      const remove = () => removeFromPlate(item.dataset.ingId);
+      const id = item.dataset.ingId;
+      const ing = state.byId.get(id);
+      const label = ing?.name ? `Remove ${ing.name} from plate` : 'Remove from plate';
+      item.setAttribute('role', 'button');
+      item.setAttribute('tabindex', '0');
+      item.setAttribute('aria-label', label);
+      item.title = label;
+      const remove = () => removeFromPlate(id);
       item.addEventListener('click', (e) => {
         e.stopPropagation();
         remove();
