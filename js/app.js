@@ -605,6 +605,27 @@
     return false;
   }
 
+  function ingredientUseKind(ing) {
+    const SyncApi = Sync();
+    if (SyncApi?.resolveIngredientUseKind) return SyncApi.resolveIngredientUseKind(ing);
+    const k = String(ing?.useKind || ing?.kind || '').trim().toLowerCase();
+    return (k === 'dish' || k === 'processed' || k === 'fresh' || k === 'raw') ? k : '';
+  }
+
+  const USE_KIND_HINTS = {
+    dish: 'Plated / finished food',
+    processed: 'Processed ingredient — still needs cooking',
+    fresh: 'Can be added to a dish or consumed as-is',
+    raw: 'Must be cooked before eating'
+  };
+
+  const USE_KIND_OPTIONS = [
+    { value: 'dish', label: 'Dish' },
+    { value: 'processed', label: 'Processed (cook further)' },
+    { value: 'fresh', label: 'Fresh (ready)' },
+    { value: 'raw', label: 'Raw (must cook)' }
+  ];
+
   function matchesLockerSearch(ing, q) {
     if (!q) return true;
     return String(ing.name || '').toLowerCase().includes(q);
@@ -949,9 +970,12 @@
   }
 
   function passStage(ing) {
-    if (state.stage === 'made') return isMade(ing);
-    if (state.stage === 'raw') return !isMade(ing);
-    return true;
+    if (state.stage === 'all') return true;
+    // Legacy Made ≈ Processed for filter continuity
+    const want = state.stage === 'made' ? 'processed' : state.stage;
+    const kind = ingredientUseKind(ing);
+    if (!kind) return false;
+    return kind === want;
   }
 
   /**
@@ -1201,7 +1225,7 @@
       ? 'No ingredients match'
       : (state.formFilter
         ? `No ${state.formFilter} forms here`
-        : (state.stage === 'made' ? 'No made ingredients here' : 'Empty family'));
+        : (state.stage !== 'all' ? `No ${state.stage} ingredients here` : 'Empty family'));
     const grid = $('#ingredient-grid');
     grid.classList.toggle('slot-arming', armed);
 
@@ -1276,17 +1300,25 @@
     return fams;
   }
 
-  /** Type + Family selects for catalog ingredients only (drives locker placement). */
+  /** Type + Family + Kind selects for catalog ingredients only (drives locker placement). */
   function detailCategoryControlsHtml(ing) {
     if (!ing?.id || !state.byId.has(ing.id)) return '';
     const curType = String(ing.uiType || ing.group || '').trim() || 'Other';
     const curFamily = String(ing.uiFamily || ing.category || '').trim();
+    const curKind = ingredientUseKind(ing);
     const typeOpts = detailTypeOptions(curType).map((t) =>
       `<option value="${esc(t)}"${t === curType ? ' selected' : ''}>${esc(t)}</option>`
     ).join('');
     const familyOpts = detailFamilyOptions(curType, curFamily).map((f) =>
       `<option value="${esc(f)}"${f === curFamily ? ' selected' : ''}>${esc(f)}</option>`
     ).join('');
+    const kindOpts = [
+      ...(!curKind ? ['<option value="" selected>—</option>'] : []),
+      ...USE_KIND_OPTIONS.map((o) =>
+        `<option value="${esc(o.value)}"${o.value === curKind ? ' selected' : ''}>${esc(o.label)}</option>`
+      )
+    ].join('');
+    const hint = USE_KIND_HINTS[curKind] || 'Not on the use tree (pantry input / livestock) — pick a kind to include';
     return `
       <div class="detail-category" data-ing-id="${esc(ing.id)}">
         <label class="detail-cat-field">
@@ -1304,6 +1336,11 @@
           <span class="detail-cat-label">New family</span>
           <input type="text" class="detail-cat-input" id="detail-new-family" placeholder="Family name" maxlength="48" autocomplete="off" />
         </label>
+        <label class="detail-cat-field detail-cat-kind">
+          <span class="detail-cat-label">Kind</span>
+          <select class="detail-cat-select" id="detail-use-kind" aria-label="Kind">${kindOpts}</select>
+        </label>
+        <p class="detail-kind-hint" id="detail-kind-hint">${esc(hint)}</p>
       </div>`;
   }
 
@@ -1330,6 +1367,20 @@
     return ing;
   }
 
+  function applyIngredientUseKind(ingId, useKind) {
+    const ing = state.byId.get(ingId);
+    if (!ing) return null;
+    const next = Sync().normalizeUseKind
+      ? Sync().normalizeUseKind(useKind)
+      : String(useKind || '').trim().toLowerCase();
+    ing.useKind = next;
+    persistIngredientMeta(ing);
+    rebuildIndexes();
+    renderGrid();
+    renderGallery();
+    return ing;
+  }
+
   function refreshOpenDetail(ing, { forceChain = false } = {}) {
     const catalog = ing?.id ? state.byId.get(ing.id) : null;
     const base = catalog || ing;
@@ -1342,6 +1393,8 @@
     if (!ing?.id || !state.byId.has(ing.id)) return;
     const typeSel = $('#detail-ui-type');
     const famSel = $('#detail-ui-family');
+    const kindSel = $('#detail-use-kind');
+    const kindHint = $('#detail-kind-hint');
     const newWrap = $('#detail-new-family-wrap');
     const newInput = $('#detail-new-family');
     if (!typeSel || !famSel) return;
@@ -1382,6 +1435,17 @@
       if (newInput) newInput.value = '';
       applyIngredientCategory(ing.id, typeSel.value, famSel.value);
       refreshOpenDetail(ing, { forceChain });
+    });
+
+    kindSel?.addEventListener('change', () => {
+      const value = kindSel.value;
+      applyIngredientUseKind(ing.id, value);
+      if (kindHint) {
+        kindHint.textContent = USE_KIND_HINTS[value]
+          || 'Not on the use tree (pantry input / livestock) — pick a kind to include';
+      }
+      renderStageRail();
+      renderGrid();
     });
 
     newInput?.addEventListener('keydown', (e) => {
@@ -3760,6 +3824,9 @@
             prev.art_url === row.art_url &&
             prev.process_chain === row.process_chain &&
             prev.form === row.form &&
+            prev.type === row.type &&
+            prev.family === row.family &&
+            prev.use_kind === row.use_kind &&
             prev.hunger_key === row.hunger_key &&
             prev.flavor_key === row.flavor_key &&
             prev.star_roles === row.star_roles;
@@ -3788,7 +3855,15 @@
       const result = await Sync().pullFromSheet({ onStatus: setDriveStatus });
       if (result.reason === 'missing-client-id') {
         const baked = await Sync().loadBakedFoodMasterRows();
-        const stats = Sync().applyFoodMasterRowsToCatalog(state.catalog, baked);
+        const cache = Sync().loadCache();
+        const dirtyIngredientIds = Object.keys(cache.dirty?.ingredients || {});
+        const preserveUseKindIds = Object.values(cache.ingredients || {})
+          .filter((row) => Sync().normalizeUseKind(row.use_kind))
+          .map((row) => row.id);
+        const stats = Sync().applyFoodMasterRowsToCatalog(state.catalog, baked, {
+          dirtyIngredientIds,
+          preserveUseKindIds
+        });
         applyDeletedArtDenylistToCatalog();
         rebuildIndexes();
         renderGrid();
@@ -3800,7 +3875,14 @@
       const masterRows = result.foodMasterRows?.length
         ? result.foodMasterRows
         : await Sync().loadBakedFoodMasterRows();
-      const fmStats = Sync().applyFoodMasterRowsToCatalog(state.catalog, masterRows);
+      const dirtyIngredientIds = Object.keys(result.store.dirty?.ingredients || {});
+      const preserveUseKindIds = Object.values(result.store.ingredients || {})
+        .filter((row) => Sync().normalizeUseKind(row.use_kind))
+        .map((row) => row.id);
+      const fmStats = Sync().applyFoodMasterRowsToCatalog(state.catalog, masterRows, {
+        dirtyIngredientIds,
+        preserveUseKindIds
+      });
       applyDeletedArtDenylistToCatalog();
       rebuildIndexes();
       // Merge dishes from sheet into kept
