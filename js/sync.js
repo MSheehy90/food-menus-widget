@@ -10,7 +10,7 @@
 
   const HEADERS = {
     ingredients: [
-      'id', 'name', 'type', 'family', 'stage', 'process_chain',
+      'id', 'name', 'type', 'family', 'stage', 'use_kind', 'process_chain',
       'art_status', 'art_url', 'form', 'hunger_key', 'flavor_key', 'star_roles', 'shelf_days', 'updatedAt'
     ],
     dishes: [
@@ -134,16 +134,111 @@
     return 'whole';
   }
 
+  const USE_KINDS = new Set(['dish', 'processed', 'fresh', 'raw']);
+
+  function normalizeUseKind(value) {
+    const k = String(value || '').trim().toLowerCase();
+    return USE_KINDS.has(k) ? k : '';
+  }
+
+  /** Plated / finished-food name cues (never invent Food Master rows). */
+  function nameLooksPlated(name) {
+    const n = String(name || '').toLowerCase().trim();
+    if (!n) return false;
+    if (/\b(set|bowl|plate|platter|pie|cake|muffin|donut|doughnut|cookie|sandwich|burger|taco|burrito|stew|soup|salad|curry|casserole|croissant|bagel|danish|cheesecake|brownie|tart|pretzel|challah|dinner)\b/.test(n)) {
+      return true;
+    }
+    return /(pie|cake|muffin|donut|doughnut|cookie|croissant|bagel|danish|cheesecake|brownie|tart|pretzel|roll|loaf)s?$/i.test(n);
+  }
+
+  /**
+   * Dish when art is under plated extras/heroes, or /dishes/ + plated-looking name.
+   * Do not treat 5star/tiles (component art) as dishes.
+   * Does not consult useKind — callers apply explicit overrides separately.
+   */
+  function looksLikeDishIngredient(ing) {
+    if (!ing) return false;
+    const art = String(ing.art || '').replace(/\\/g, '/').toLowerCase();
+    const source = String(ing.source || '').toLowerCase();
+    if (/\/dishes\/extra\//.test(art) || /\/dishes\/5star\/heroes\//.test(art)) return true;
+    if (/\/dishes\//.test(art) && !/\/5star\/tiles\//.test(art) && nameLooksPlated(ing.name)) return true;
+    if ((source === 'kept-dish' || source === 'dishes-list') && nameLooksPlated(ing.name)) return true;
+    return false;
+  }
+
+  /**
+   * Map Food Master Stage + Serving State → use tree kind.
+   * Input → empty (no tree-filter membership). Stocked → fresh. Byproduct → raw.
+   */
+  function inferUseKindFromMaster({ stageRaw, stage, servState, name, art, source } = {}) {
+    if (looksLikeDishIngredient({ name, art, source, useKind: '' })) return 'dish';
+
+    const stageText = String(stageRaw || stage || '').trim().toLowerCase();
+    const serv = String(servState || '').trim().toLowerCase();
+
+    // Inputs stay out of the use-tree filter unless Melinda overrides in UI.
+    if (stageText === 'input') return '';
+
+    // Serving State contains fresh (and not only dried) → fresh
+    if (/\bfresh\b/.test(serv) && !/^dried$/.test(serv)) return 'fresh';
+
+    // Stocked bread/yogurt/tofu/wine → fresh (ready-to-eat pantry)
+    if (stageText === 'stocked' || serv === 'stocked') return 'fresh';
+
+    // Processed stage OR Serving State Processed/Dried → processed
+    if (
+      stageText === 'processed'
+      || /\bprocess/.test(stageText)
+      || serv === 'processed'
+      || serv === 'dried'
+    ) return 'processed';
+
+    // Byproduct bones/fat → raw
+    if (stageText === 'byproduct') return 'raw';
+
+    // Butchered OR Raw/Uncooked → raw
+    if (
+      stageText === 'butchered'
+      || /\bbutcher/.test(stageText)
+      || serv === 'raw'
+      || serv === 'uncooked'
+    ) return 'raw';
+
+    // Primary leftovers without Fresh/Raw/Uncooked already handled above
+    if (stageText === 'primary' || stageText === 'raw') {
+      if (serv === 'raw' || serv === 'uncooked') return 'raw';
+      if (/\bfresh\b/.test(serv)) return 'fresh';
+    }
+
+    return '';
+  }
+
+  function resolveIngredientUseKind(ing, { allowDishDetect = true } = {}) {
+    const explicit = normalizeUseKind(ing?.useKind || ing?.kind);
+    if (explicit) return explicit;
+    if (allowDishDetect && looksLikeDishIngredient(ing)) return 'dish';
+    return inferUseKindFromMaster({
+      stageRaw: ing?.stageRaw,
+      stage: ing?.stage,
+      servState: ing?.servState,
+      name: ing?.name,
+      art: ing?.art,
+      source: ing?.source
+    });
+  }
+
   /* —— row mappers —— */
   function ingredientFromCatalog(ing, updatedAt) {
     const art = ing.art || '';
     const form = ing.form || inferPaintingForm(art, ing.name);
+    const useKind = normalizeUseKind(ing.useKind || ing.kind);
     return {
       id: ing.id,
       name: ing.name,
       type: ing.uiType || ing.group || '',
       family: ing.uiFamily || ing.category || '',
       stage: ing.stage || '',
+      use_kind: useKind,
       process_chain: (ing.chain || [ing.name]).join(' → '),
       art_status: art ? 'present' : 'MISSING',
       art_url: art || 'MISSING',
@@ -260,6 +355,7 @@
     const byId = new Map((catalog.ingredients || []).map((i) => [i.id, i]));
     Object.values(ingredientMap || {}).forEach((row) => {
       let ing = byId.get(row.id);
+      const rowUseKind = normalizeUseKind(row.use_kind || row.useKind || row.kind);
       if (!ing) {
         ing = {
           id: row.id,
@@ -267,6 +363,7 @@
           uiType: row.type || 'Other',
           uiFamily: row.family || 'Misc',
           stage: row.stage || '',
+          useKind: rowUseKind,
           chain: String(row.process_chain || row.name).split(/\s*→\s*/).filter(Boolean),
           art: '',
           hungerKey: row.hunger_key || null,
@@ -291,6 +388,7 @@
         if (row.type) ing.uiType = row.type;
         if (row.family) ing.uiFamily = row.family;
         if (row.stage != null) ing.stage = row.stage;
+        if (rowUseKind) ing.useKind = rowUseKind;
         if (row.process_chain) {
           ing.chain = String(row.process_chain).split(/\s*→\s*/).filter(Boolean);
         }
@@ -355,7 +453,7 @@
 
   /**
    * Parse Food Master sheet values. Header is typically CSV row 3:
-   * Row,Item,Stage,Group,Category,Type,...
+   * Row,Item,Stage,Group,Category,Type,...,Serving State,...
    */
   function parseFoodMasterSheetValues(values) {
     const rows = values || [];
@@ -376,6 +474,7 @@
     const iGroup = idx('group');
     const iCategory = idx('category');
     const iType = idx('type');
+    const iServState = idx('serving state');
     const out = [];
     for (let r = headerIdx + 1; r < rows.length; r++) {
       const line = rows[r] || [];
@@ -384,9 +483,11 @@
       out.push({
         item,
         stage: String(line[iStage] ?? '').trim(),
+        stageRaw: String(line[iStage] ?? '').trim(),
         group: String(line[iGroup] ?? '').trim(),
         category: String(line[iCategory] ?? '').trim(),
-        type: String(line[iType] ?? '').trim()
+        type: String(line[iType] ?? '').trim(),
+        servState: iServState >= 0 ? String(line[iServState] ?? '').trim() : ''
       });
     }
     return out;
@@ -399,7 +500,8 @@
       stageRaw: row.stageRaw || row.stage || '',
       group: row.group || '',
       category: row.category || '',
-      type: row.type || ''
+      type: row.type || '',
+      servState: row.servState || row['Serving State'] || ''
     })).filter((r) => r.item);
   }
 
@@ -416,10 +518,21 @@
   /**
    * Read-only merge of Food Master Item roster into catalog.
    * Creates missing catalog rows; updates uiType from Group and uiFamily/category from Category.
+   * Applies Stage + Serving State → useKind (dish|processed|fresh|raw).
    * Does NOT invent HQ extras or write back to Food Master.
+   * Dirty local / SoT use_kind overrides are preserved (same idea as dirty art).
    */
-  function applyFoodMasterRowsToCatalog(catalog, masterRows) {
+  function applyFoodMasterRowsToCatalog(catalog, masterRows, {
+    dirtyIngredientIds = null,
+    preserveUseKindIds = null
+  } = {}) {
     if (!catalog || !Array.isArray(masterRows)) return { created: 0, updated: 0 };
+    const dirtyIds = dirtyIngredientIds instanceof Set
+      ? dirtyIngredientIds
+      : new Set(dirtyIngredientIds || []);
+    const preserveKindIds = preserveUseKindIds instanceof Set
+      ? preserveUseKindIds
+      : new Set(preserveUseKindIds || []);
     const usedIds = new Set((catalog.ingredients || []).map((i) => i.id));
     const byName = new Map();
     (catalog.ingredients || []).forEach((ing) => {
@@ -427,6 +540,12 @@
     });
     let created = 0;
     let updated = 0;
+    const touched = new Set();
+    const shouldPreserveKind = (ing) => {
+      if (!ing) return false;
+      if (!normalizeUseKind(ing.useKind)) return false;
+      return dirtyIds.has(ing.id) || preserveKindIds.has(ing.id);
+    };
     masterRows.forEach((row) => {
       const name = String(row.item || '').trim();
       if (!name) return;
@@ -435,6 +554,7 @@
       const type = String(row.type || '').trim();
       const stageCode = String(row.stage || '').trim();
       const stageRaw = String(row.stageRaw || row.stage || '').trim();
+      const servState = String(row.servState || '').trim();
       const stage = (() => {
         const s = (stageCode || stageRaw).toLowerCase();
         if (!s) return '';
@@ -442,6 +562,12 @@
         if (s.includes('primary') || s.includes('raw') || s.includes('butcher')) return 'primary';
         return stageCode || s;
       })();
+      const inferredKind = inferUseKindFromMaster({
+        stageRaw: stageRaw || stage,
+        stage,
+        servState,
+        name
+      });
       let ing = byName.get(name.toLowerCase());
       if (!ing) {
         const id = slugFoodMasterId(name, usedIds);
@@ -454,6 +580,8 @@
           type,
           stage: stage || 'primary',
           stageRaw: stageRaw || stage || 'Primary',
+          servState,
+          useKind: inferredKind,
           uiType: group || 'Other',
           uiFamily: category || 'Misc',
           processed: stage === 'processed',
@@ -494,9 +622,36 @@
           ing.stageRaw = stageRaw;
           changed = true;
         }
+        if (servState !== '' && ing.servState !== servState) {
+          ing.servState = servState;
+          changed = true;
+        } else if (servState && !ing.servState) {
+          ing.servState = servState;
+          changed = true;
+        }
+        if (!shouldPreserveKind(ing)) {
+          const nextKind = looksLikeDishIngredient(ing)
+            ? 'dish'
+            : inferredKind;
+          if (nextKind !== normalizeUseKind(ing.useKind)) {
+            ing.useKind = nextKind;
+            changed = true;
+          }
+        }
         if (changed) updated += 1;
       }
+      touched.add(ing.id);
       ensureCatalogHierarchy(catalog, ing);
+    });
+
+    // HQ tiles / extras not on Food Master: infer from stageRaw, servState, or plated art.
+    (catalog.ingredients || []).forEach((ing) => {
+      if (!ing || touched.has(ing.id) || shouldPreserveKind(ing)) return;
+      const next = resolveIngredientUseKind(ing);
+      if (next !== normalizeUseKind(ing.useKind)) {
+        ing.useKind = next;
+        updated += 1;
+      }
     });
     return { created, updated };
   }
@@ -913,7 +1068,11 @@
     }
     applyIngredientRowsToCatalog(catalog, store.ingredients, store.assets);
     const baked = await loadBakedFoodMasterRows();
-    applyFoodMasterRowsToCatalog(catalog, baked);
+    const dirtyIngredientIds = Object.keys(store.dirty?.ingredients || {});
+    const preserveUseKindIds = Object.values(store.ingredients || {})
+      .filter((row) => normalizeUseKind(row.use_kind))
+      .map((row) => row.id);
+    applyFoodMasterRowsToCatalog(catalog, baked, { dirtyIngredientIds, preserveUseKindIds });
     return store;
   }
 
@@ -991,6 +1150,10 @@
     loadBakedFoodMasterRows,
     foodMasterRowsFromBaked,
     inferPaintingForm,
+    inferUseKindFromMaster,
+    resolveIngredientUseKind,
+    normalizeUseKind,
+    looksLikeDishIngredient,
     flattenDishes,
     ingredientFromCatalog,
     assetFromIngredient,

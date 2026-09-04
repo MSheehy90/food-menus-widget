@@ -669,7 +669,7 @@ button.slot-opt-chip {
 .locker-filter-row .stage-rail {
   flex: 1 1 auto;
   padding: 0;
-  min-width: 11rem;
+  min-width: 0;
 }
 .form-rail {
   display: flex;
@@ -705,16 +705,21 @@ button.slot-opt-chip {
 }
 
 .stage-rail {
-  display: flex; gap: 0.35rem;
+  display: flex; gap: 0.28rem;
   padding: 0.15rem 0.15rem 0.25rem;
+  flex-wrap: wrap;
 }
 .stage-chip {
-  flex: 1; min-height: 2.15rem;
+  flex: 1 1 auto;
+  min-width: 3.2rem;
+  min-height: 2.15rem;
   border-radius: 999px;
   border: 1px solid var(--line);
   background: var(--panel);
-  font-weight: 800; font-size: 0.8rem;
+  font-weight: 800; font-size: 0.72rem;
   color: var(--ink);
+  padding: 0.25rem 0.45rem;
+  touch-action: manipulation;
 }
 .stage-chip.active {
   background: #f3ebe0; color: #1a1410; border-color: #f3ebe0;
@@ -1194,6 +1199,17 @@ dialog::backdrop { background: rgba(10,8,6,0.75); }
 }
 .detail-cat-field.detail-cat-new-family[hidden] {
   display: none !important;
+}
+.detail-cat-field.detail-cat-kind {
+  grid-column: 1 / -1;
+}
+.detail-kind-hint {
+  grid-column: 1 / -1;
+  margin: -0.15rem 0 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--dim);
 }
 .detail-cat-label {
   font-size: 0.68rem;
