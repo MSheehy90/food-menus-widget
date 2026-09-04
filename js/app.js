@@ -377,7 +377,10 @@
   function hydrateIngredients(list) {
     return (list || []).map((row) => {
       const full = state.byId.get(row.id);
-      return full ? { ...full, ...row, art: row.art || full.art || '' } : row;
+      // Prefer live catalog name so renames resolve on plate / kept dishes.
+      return full
+        ? { ...full, ...row, name: full.name || row.name, art: row.art || full.art || '' }
+        : row;
     });
   }
 
@@ -1381,12 +1384,125 @@
     return ing;
   }
 
+  /** Migrate face-art + flag metadata when objectKey changes with a rename. */
+  function migrateObjectKeyMeta(oldName, newName) {
+    const oldKey = objectKeyFromLabel(oldName);
+    const newKey = objectKeyFromLabel(newName);
+    if (!oldKey || !newKey || oldKey === newKey) return;
+
+    const faceMap = loadFaceArtMap();
+    if (faceMap[oldKey]) {
+      if (!faceMap[newKey]) faceMap[newKey] = faceMap[oldKey];
+      delete faceMap[oldKey];
+      saveFaceArtMap(faceMap);
+    }
+
+    const flagMap = loadFlaggedArtMap();
+    let flagsDirty = false;
+    Object.keys(flagMap).forEach((path) => {
+      const meta = flagMap[path];
+      if (!meta) return;
+      if (meta.objectKey === oldKey) {
+        meta.objectKey = newKey;
+        flagsDirty = true;
+      }
+      if (meta.label && String(meta.label).trim() === String(oldName).trim()) {
+        meta.label = newName;
+        flagsDirty = true;
+      }
+    });
+    if (flagsDirty) saveFlaggedArtMap(flagMap);
+  }
+
+  function applyIngredientName(ingId, nextName) {
+    const ing = state.byId.get(ingId);
+    if (!ing) return null;
+    const name = String(nextName || '').trim();
+    if (!name) return null;
+    const oldName = String(ing.name || '').trim();
+    if (name === oldName) return ing;
+
+    const clash = state.byName.get(name.toLowerCase());
+    if (clash && clash.id !== ingId) return null;
+
+    migrateObjectKeyMeta(oldName, name);
+    ing.name = name;
+    if (Array.isArray(ing.chain) && ing.chain.length) {
+      ing.chain = ing.chain.map((c) => (String(c) === oldName ? name : c));
+    } else {
+      ing.chain = [name];
+    }
+    persistIngredientMeta(ing);
+    rebuildIndexes();
+    renderGrid();
+    renderTray();
+    renderGallery();
+    return ing;
+  }
+
   function refreshOpenDetail(ing, { forceChain = false } = {}) {
     const catalog = ing?.id ? state.byId.get(ing.id) : null;
     const base = catalog || ing;
     if (!base) return;
     const next = resolveGalleryObject({ ...base, name: base.name, art: base.art, _galleryObject: null });
     openDetail(next ? (ingredientForGalleryItem(next) || base) : base, { forceChain });
+  }
+
+  function detailNameHtml(ing, displayName) {
+    const inCatalog = Boolean(ing?.id && state.byId.has(ing.id));
+    if (!inCatalog) {
+      return `<p class="detail-name">${esc(displayName)}</p>`;
+    }
+    return `
+      <label class="detail-name-field" for="detail-food-name">
+        <span class="sr-only">Name</span>
+        <input type="text" class="detail-name-input" id="detail-food-name"
+          value="${esc(displayName)}" maxlength="64" autocomplete="off"
+          enterkeyhint="done" aria-label="Food name" />
+      </label>`;
+  }
+
+  function bindDetailNameControl(ing, { forceChain = false } = {}) {
+    if (!ing?.id || !state.byId.has(ing.id)) return;
+    const input = $('#detail-food-name');
+    if (!input) return;
+
+    let committing = false;
+    const commit = () => {
+      if (committing) return;
+      const next = String(input.value || '').trim();
+      const catalog = state.byId.get(ing.id);
+      const current = String(catalog?.name || '').trim();
+      if (!next) {
+        input.value = current;
+        return;
+      }
+      if (next === current) {
+        input.value = current;
+        return;
+      }
+      const clash = state.byName.get(next.toLowerCase());
+      if (clash && clash.id !== ing.id) {
+        input.value = current;
+        return;
+      }
+      committing = true;
+      applyIngredientName(ing.id, next);
+      refreshOpenDetail(ing, { forceChain });
+    };
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        input.blur();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        const catalog = state.byId.get(ing.id);
+        input.value = String(catalog?.name || '').trim();
+        input.blur();
+      }
+    });
+    input.addEventListener('blur', commit);
   }
 
   function bindDetailCategoryControls(ing, { forceChain = false } = {}) {
@@ -1653,7 +1769,7 @@
     $('#detail-body').innerHTML = `
       <div class="detail-hero">
         <div class="big-ico">${artHtml(ing)}</div>
-        <p class="detail-name">${esc(displayName)}</p>
+        ${detailNameHtml(ing, displayName)}
         ${detailCategoryControlsHtml(ing)}
       </div>
       ${showChain ? `
@@ -1830,6 +1946,7 @@
       }
     });
 
+    bindDetailNameControl(ing, { forceChain });
     bindDetailCategoryControls(ing, { forceChain });
 
     enhanceArtImages($('#detail-body'));
@@ -3071,14 +3188,30 @@
   }
 
   function pickObjectTitle(ings, fileLabels, faceArt) {
+    const catalogLabels = [];
+    (ings || []).forEach((ing) => {
+      const n = String(ing?.name || '').trim();
+      if (n) catalogLabels.push(n);
+    });
+    // Catalog display name wins over filename stem so renames (e.g. Udon noodle) stick.
+    if (catalogLabels.length) {
+      const rankedCat = catalogLabels.slice().sort((a, b) => {
+        const sa = scoreFaceCandidate({ art: faceArt, label: a, fromCatalog: true });
+        const sb = scoreFaceCandidate({ art: faceArt, label: b, fromCatalog: true });
+        if (sb !== sa) return sb - sa;
+        return a.localeCompare(b);
+      });
+      const nonForm = rankedCat.find((n) => !isFormishLabel(n));
+      return nonForm || rankedCat[0];
+    }
+
     const labels = [];
-    (ings || []).forEach((ing) => { if (ing?.name) labels.push(String(ing.name)); });
     (fileLabels || []).forEach((n) => { if (n) labels.push(String(n)); });
     if (!labels.length) return humanizeArtStem(artStem(faceArt)) || 'Untitled';
     const stemTitle = humanizeArtStem(artStem(faceArt)).toLowerCase();
     const ranked = labels.slice().sort((a, b) => {
-      const sa = scoreFaceCandidate({ art: faceArt, label: a, fromCatalog: true });
-      const sb = scoreFaceCandidate({ art: faceArt, label: b, fromCatalog: true });
+      const sa = scoreFaceCandidate({ art: faceArt, label: a, fromCatalog: false });
+      const sb = scoreFaceCandidate({ art: faceArt, label: b, fromCatalog: false });
       if (sb !== sa) return sb - sa;
       return a.localeCompare(b);
     });
