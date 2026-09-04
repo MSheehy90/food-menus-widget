@@ -1259,19 +1259,140 @@
     renderGrid();
   }
 
-  function detailMetaChipsHtml(ing) {
-    const chips = [];
-    const push = (label, value) => {
-      const v = String(value || '').trim();
-      if (!v) return;
-      chips.push(`<span class="detail-meta-chip">${esc(label)} <strong>${esc(v)}</strong></span>`);
+  const DETAIL_NEW_FAMILY = '__new_family__';
+
+  function detailTypeOptions(currentType) {
+    const order = Array.isArray(state.catalog?.typeOrder) ? state.catalog.typeOrder.slice() : [];
+    const cur = String(currentType || '').trim();
+    if (cur && !order.includes(cur)) order.push(cur);
+    return order;
+  }
+
+  function detailFamilyOptions(uiType, currentFamily) {
+    const fams = Object.keys((state.catalog?.hierarchy || {})[uiType] || {});
+    const cur = String(currentFamily || '').trim();
+    if (cur && !fams.includes(cur)) fams.push(cur);
+    fams.sort((a, b) => a.localeCompare(b));
+    return fams;
+  }
+
+  /** Type + Family selects for catalog ingredients only (drives locker placement). */
+  function detailCategoryControlsHtml(ing) {
+    if (!ing?.id || !state.byId.has(ing.id)) return '';
+    const curType = String(ing.uiType || ing.group || '').trim() || 'Other';
+    const curFamily = String(ing.uiFamily || ing.category || '').trim();
+    const typeOpts = detailTypeOptions(curType).map((t) =>
+      `<option value="${esc(t)}"${t === curType ? ' selected' : ''}>${esc(t)}</option>`
+    ).join('');
+    const familyOpts = detailFamilyOptions(curType, curFamily).map((f) =>
+      `<option value="${esc(f)}"${f === curFamily ? ' selected' : ''}>${esc(f)}</option>`
+    ).join('');
+    return `
+      <div class="detail-category" data-ing-id="${esc(ing.id)}">
+        <label class="detail-cat-field">
+          <span class="detail-cat-label">Type</span>
+          <select class="detail-cat-select" id="detail-ui-type" aria-label="Type">${typeOpts}</select>
+        </label>
+        <label class="detail-cat-field">
+          <span class="detail-cat-label">Family</span>
+          <select class="detail-cat-select" id="detail-ui-family" aria-label="Family">
+            ${familyOpts}
+            <option value="${DETAIL_NEW_FAMILY}">＋ New family</option>
+          </select>
+        </label>
+        <label class="detail-cat-field detail-cat-new-family" id="detail-new-family-wrap" hidden>
+          <span class="detail-cat-label">New family</span>
+          <input type="text" class="detail-cat-input" id="detail-new-family" placeholder="Family name" maxlength="48" autocomplete="off" />
+        </label>
+      </div>`;
+  }
+
+  function persistIngredientMeta(ing) {
+    persistIngredientArt(ing);
+  }
+
+  function applyIngredientCategory(ingId, uiType, uiFamily) {
+    const ing = state.byId.get(ingId);
+    if (!ing) return null;
+    const type = String(uiType || '').trim() || 'Other';
+    const family = String(uiFamily || '').trim() || 'Misc';
+    ing.uiType = type;
+    ing.uiFamily = family;
+    ing.group = type;
+    ing.category = family;
+    ensureIngredientInHierarchy(ing);
+    persistIngredientMeta(ing);
+    rebuildIndexes();
+    renderTypeRail();
+    renderFamilies();
+    renderGrid();
+    renderGallery();
+    return ing;
+  }
+
+  function refreshOpenDetail(ing, { forceChain = false } = {}) {
+    const catalog = ing?.id ? state.byId.get(ing.id) : null;
+    const base = catalog || ing;
+    if (!base) return;
+    const next = resolveGalleryObject({ ...base, name: base.name, art: base.art, _galleryObject: null });
+    openDetail(next ? (ingredientForGalleryItem(next) || base) : base, { forceChain });
+  }
+
+  function bindDetailCategoryControls(ing, { forceChain = false } = {}) {
+    if (!ing?.id || !state.byId.has(ing.id)) return;
+    const typeSel = $('#detail-ui-type');
+    const famSel = $('#detail-ui-family');
+    const newWrap = $('#detail-new-family-wrap');
+    const newInput = $('#detail-new-family');
+    if (!typeSel || !famSel) return;
+
+    const commitNewFamily = () => {
+      const name = String(newInput?.value || '').trim();
+      if (!name) return;
+      const type = typeSel.value;
+      applyIngredientCategory(ing.id, type, name);
+      refreshOpenDetail(ing, { forceChain });
     };
-    push('uiType', ing.uiType);
-    push('uiFamily', ing.uiFamily);
-    push('group', ing.group);
-    push('category', ing.category);
-    push('type', ing.type);
-    return chips.length ? `<div class="detail-meta">${chips.join('')}</div>` : '';
+
+    typeSel.addEventListener('change', () => {
+      const type = typeSel.value;
+      const family = famSel.value === DETAIL_NEW_FAMILY
+        ? String(newInput?.value || '').trim() || (state.byId.get(ing.id)?.uiFamily || '')
+        : famSel.value;
+      if (famSel.value === DETAIL_NEW_FAMILY && !String(newInput?.value || '').trim()) {
+        // Type changed while "new family" is open — rebuild family list for the new type,
+        // keep new-family UI; apply type with existing family until she names one.
+        const catalogIng = state.byId.get(ing.id);
+        const keepFamily = catalogIng?.uiFamily || catalogIng?.category || 'Misc';
+        applyIngredientCategory(ing.id, type, keepFamily);
+        refreshOpenDetail(ing, { forceChain });
+        return;
+      }
+      applyIngredientCategory(ing.id, type, family || 'Misc');
+      refreshOpenDetail(ing, { forceChain });
+    });
+
+    famSel.addEventListener('change', () => {
+      if (famSel.value === DETAIL_NEW_FAMILY) {
+        if (newWrap) newWrap.hidden = false;
+        newInput?.focus();
+        return;
+      }
+      if (newWrap) newWrap.hidden = true;
+      if (newInput) newInput.value = '';
+      applyIngredientCategory(ing.id, typeSel.value, famSel.value);
+      refreshOpenDetail(ing, { forceChain });
+    });
+
+    newInput?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        commitNewFamily();
+      }
+    });
+    newInput?.addEventListener('blur', () => {
+      if (famSel.value === DETAIL_NEW_FAMILY) commitNewFamily();
+    });
   }
 
   /** Catalog names + paintings for this food object (detail-only; grid stays one tile). */
@@ -1469,7 +1590,7 @@
       <div class="detail-hero">
         <div class="big-ico">${artHtml(ing)}</div>
         <p class="detail-name">${esc(displayName)}</p>
-        ${detailMetaChipsHtml(ing)}
+        ${detailCategoryControlsHtml(ing)}
       </div>
       ${showChain ? `
         <div class="chain-row" aria-label="Process chain">
@@ -1644,6 +1765,8 @@
         $('#detail-dialog')?.close();
       }
     });
+
+    bindDetailCategoryControls(ing, { forceChain });
 
     enhanceArtImages($('#detail-body'));
     $('#detail-dialog').showModal();
@@ -2620,6 +2743,12 @@
 
   function ensureIngredientInHierarchy(ing) {
     const hier = state.catalog.hierarchy || (state.catalog.hierarchy = {});
+    // Remove from every bucket first (same idea as Sync ensureCatalogHierarchy)
+    Object.keys(hier).forEach((t) => {
+      Object.keys(hier[t] || {}).forEach((f) => {
+        hier[t][f] = (hier[t][f] || []).filter((id) => id !== ing.id);
+      });
+    });
     const type = ing.uiType || 'Other';
     const family = ing.uiFamily || 'Extras';
     if (!hier[type]) hier[type] = {};
