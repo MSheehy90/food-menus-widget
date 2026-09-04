@@ -969,6 +969,13 @@ button.slot-opt-chip {
   display: block;
   margin: 0 0.85rem 0.45rem;
 }
+.gallery-type-rail {
+  margin: 0 0.7rem 0.35rem;
+  padding: 0.15rem 0.15rem 0.4rem;
+}
+.gallery-type-rail[hidden] {
+  display: none !important;
+}
 .gallery-grid { padding: 0 0.75rem calc(1rem + var(--safe-bottom)); }
 .gallery-grid.gallery-miss {
   display: flex;

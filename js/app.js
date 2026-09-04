@@ -24,6 +24,7 @@
     detailIng: null,
     galleryMode: 'have',
     gallerySearch: '',
+    galleryType: '__all__',
     artFiles: [],
     longPressTimer: null,
     dishName: '',
@@ -3489,6 +3490,71 @@
     return it.uiFamily || it.category || (it.kind === 'named-file' ? 'Extras' : 'Other');
   }
 
+  /** Distinct section labels (Family / Type grouping) present in the painted set, scroll order. */
+  function paintedTypeLabels(items) {
+    const seen = new Set();
+    const out = [];
+    (items || []).forEach((it) => {
+      const label = paintedSectionLabel(it);
+      if (!label || seen.has(label)) return;
+      seen.add(label);
+      out.push(label);
+    });
+    return out;
+  }
+
+  function galleryItemsMatchSearch(it) {
+    return galleryQueryMatch(it.title) ||
+      galleryQueryMatch(artStem(it.art)) ||
+      galleryQueryMatch(humanizeArtStem(artStem(it.art))) ||
+      galleryQueryMatch(it.uiType) ||
+      galleryQueryMatch(it.uiFamily) ||
+      galleryQueryMatch(it.category) ||
+      (it.names || []).some((n) => galleryQueryMatch(n));
+  }
+
+  function passGalleryType(it) {
+    if (state.galleryType === '__all__') return true;
+    return paintedSectionLabel(it) === state.galleryType;
+  }
+
+  function renderGalleryTypeRail(itemsForChips) {
+    const rail = $('#gallery-type-rail');
+    if (!rail) return;
+    const show = state.galleryMode === 'have';
+    rail.hidden = !show;
+    if (!show) return;
+
+    const labels = paintedTypeLabels(itemsForChips);
+    if (state.galleryType !== '__all__' && !labels.includes(state.galleryType)) {
+      state.galleryType = '__all__';
+    }
+
+    const chips = [
+      {
+        key: '__all__',
+        label: 'All types',
+        active: state.galleryType === '__all__'
+      },
+      ...labels.map((t) => ({
+        key: t,
+        label: t,
+        active: state.galleryType === t
+      }))
+    ];
+
+    rail.innerHTML = chips.map((c) => `
+      <button type="button" class="type-chip ${c.active ? 'active' : ''}" data-gal-type="${esc(c.key)}" aria-pressed="${c.active ? 'true' : 'false'}">${esc(c.label)}</button>
+    `).join('');
+
+    rail.querySelectorAll('.type-chip').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        state.galleryType = btn.dataset.galType || '__all__';
+        renderGallery();
+      });
+    });
+  }
+
   function ingredientForGalleryItem(it) {
     if (!it) return null;
     if (it.kind === 'object') {
@@ -3625,15 +3691,10 @@
     grid.classList.toggle('gallery-flagged', state.galleryMode === 'flag');
 
     if (state.galleryMode === 'have') {
-      const items = paintedGalleryItems().filter((it) =>
-        galleryQueryMatch(it.title) ||
-        galleryQueryMatch(artStem(it.art)) ||
-        galleryQueryMatch(humanizeArtStem(artStem(it.art))) ||
-        galleryQueryMatch(it.uiType) ||
-        galleryQueryMatch(it.uiFamily) ||
-        galleryQueryMatch(it.category) ||
-        (it.names || []).some((n) => galleryQueryMatch(n))
-      );
+      const searched = paintedGalleryItems().filter(galleryItemsMatchSearch);
+      // Chips from search-matched set (before type filter) so types stay discoverable while searching.
+      renderGalleryTypeRail(searched);
+      const items = searched.filter(passGalleryType);
       if (!items.length) {
         grid.innerHTML = `<p class="muted" style="grid-column:1/-1;text-align:center">None</p>`;
         return;
@@ -3669,6 +3730,7 @@
     }
 
     if (state.galleryMode === 'untitled') {
+      renderGalleryTypeRail([]);
       const files = untitledArtFiles().filter((path) => {
         const stem = artStem(path);
         return galleryQueryMatch(stem) || galleryQueryMatch(path);
@@ -3705,6 +3767,7 @@
     }
 
     if (state.galleryMode === 'flag') {
+      renderGalleryTypeRail([]);
       const entries = flaggedArtEntries().filter((e) =>
         galleryQueryMatch(e.label) ||
         galleryQueryMatch(e.kind) ||
@@ -3773,6 +3836,7 @@
       return;
     }
 
+    renderGalleryTypeRail([]);
     const missing = missingArtIngredients()
       .filter((ing) => galleryQueryMatch(ing.name) || galleryQueryMatch(ing.uiType || ing.group) || galleryQueryMatch(ing.uiFamily || ing.category));
 
