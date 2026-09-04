@@ -2383,8 +2383,11 @@
         });
         const legal = S.detectStyle(ings.map((i) => i.name));
         const score = ings.length ? S.scoreDish(ings, state.catalog) : null;
-        // Alternate slot choices (not plated) — footnote only, one row per dish
+        // Alternate slot choices (not plated) — footnote only for true flexible/substitute slots
         const menuSlotAlts = (fam.slots || []).map((slot) => {
+          if (!slot.substituteGroup && !(slot.choices || []).length) return null;
+          // Keep notes light: only slots with substitute groups (flexible), not every choice list
+          if (!slot.substituteGroup) return null;
           const alts = (slot.choices || [])
             .map((row) => (Array.isArray(row) ? row[0] : row))
             .filter((n) => n && n !== slot.defaultChoice)
