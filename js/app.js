@@ -2383,6 +2383,15 @@
         });
         const legal = S.detectStyle(ings.map((i) => i.name));
         const score = ings.length ? S.scoreDish(ings, state.catalog) : null;
+        // Alternate slot choices (not plated) — footnote only, one row per dish
+        const menuSlotAlts = (fam.slots || []).map((slot) => {
+          const alts = (slot.choices || [])
+            .map((row) => (Array.isArray(row) ? row[0] : row))
+            .filter((n) => n && n !== slot.defaultChoice)
+            .slice(0, 4);
+          if (!alts.length) return null;
+          return { label: slot.label || slot.id || 'Slot', alts };
+        }).filter(Boolean);
         out.push({
           id: `starter:${rest.id}:${fam.id}`,
           name: fam.label,
@@ -2391,7 +2400,8 @@
           source: 'shop',
           style: legal?.style || 'general',
           score,
-          ingredients: ings
+          ingredients: ings,
+          menuSlotAlts
         });
       });
     });
@@ -2429,16 +2439,66 @@
       : `Loaded “${state.dishName}”`);
   }
 
-  function dishCardHtml(d, { key, kind }) {
+  /** Complete = plated with ≥2 ingredients (matches Create dish gate; skip empty plates). */
+  function isCompleteDish(d) {
+    const ings = hydrateIngredients(d.ingredients || []).filter(Boolean);
+    return ings.length >= 2;
+  }
+
+  /** Ingredients shown on the right of dish = a + b + … (this plate only, not every slot combo). */
+  function dishEquationIngredients(d) {
+    return sortedPlate(hydrateIngredients(d.ingredients || []).filter(Boolean));
+  }
+
+  /** Light slot-alternative footnote — never explode into extra equation rows. */
+  function dishSlotNotes(d) {
+    const notes = [];
+    const slots = normalizeRecipeSlots(d.slots);
+    if (slots.length) {
+      slots.forEach((slot) => {
+        const opts = (slot.optionIds || []).map((id) => state.byId.get(id)).filter(Boolean);
+        if (opts.length <= 1) return;
+        const names = opts.map((o) => o.name).filter(Boolean).slice(0, 4);
+        if (names.length) notes.push({ label: slot.label || slot.type || 'Slot', alts: names });
+      });
+      return notes;
+    }
+    // Shop menus: other choices besides the default plated set
+    (d.menuSlotAlts || []).forEach((row) => {
+      if (row?.alts?.length) notes.push(row);
+    });
+    return notes;
+  }
+
+  function dishEquationHtml(d, { key, kind }) {
     const shop = d.restaurant || restaurantById(d.restaurantId)?.name || '';
-    const stars = d.score?.stars?.display || '';
+    const ings = dishEquationIngredients(d);
+    const notes = dishSlotNotes(d);
+    const parts = ings.map((ing, i) => {
+      const plus = i ? `<span class="dish-eq-plus" aria-hidden="true">+</span>` : '';
+      return `${plus}
+        <span class="dish-eq-ing" title="${esc(ing.name)}">
+          <span class="dish-eq-ing-art">${artHtml(ing)}</span>
+          <span class="dish-eq-ing-name">${esc(ing.name)}</span>
+        </span>`;
+    }).join('');
+    const noteHtml = notes.length
+      ? `<p class="dish-eq-slots">${notes.map((n) =>
+          `<span class="dish-eq-slot-note"><span class="dish-eq-slot-label">${esc(n.label)}</span> also ${esc(n.alts.join(' · '))}</span>`
+        ).join('')}</p>`
+      : '';
     return `
-      <button type="button" class="dish-browse-card" data-kind="${esc(kind)}" data-key="${esc(key)}">
-        <div class="mini-plate" data-dish-stack="${esc(kind)}-${esc(key)}"></div>
-        <div class="dish-browse-meta">
-          <span class="dish-browse-name">${esc(d.name || 'Untitled')}</span>
-          ${shop ? `<span class="dish-browse-shop">${esc(shop)}</span>` : ''}
-          ${stars ? `<span class="dish-browse-stars">${esc(stars)}</span>` : ''}
+      <button type="button" class="dish-eq-row" data-kind="${esc(kind)}" data-key="${esc(key)}"
+        aria-label="${esc((d.name || 'Dish') + ' equals ' + ings.map((i) => i.name).join(' plus '))}">
+        <div class="dish-eq-left">
+          <div class="mini-plate dish-eq-plate" data-dish-stack="${esc(kind)}-${esc(key)}"></div>
+          <span class="dish-eq-name">${esc(d.name || 'Untitled')}</span>
+          ${shop ? `<span class="dish-eq-shop">${esc(shop)}</span>` : ''}
+        </div>
+        <span class="dish-eq-equals" aria-hidden="true">=</span>
+        <div class="dish-eq-right">
+          ${parts || `<span class="muted dish-eq-empty-ings">No ingredients</span>`}
+          ${noteHtml}
         </div>
       </button>`;
   }
@@ -2453,19 +2513,21 @@
       return hay.includes(q);
     };
 
-    const kept = state.kept.filter(match);
-    const starters = buildShopStarters().filter(match);
+    const kept = state.kept.filter(isCompleteDish).filter(match);
+    const starters = buildShopStarters().filter(isCompleteDish).filter(match);
 
     el.innerHTML = `
       <section class="dishes-section">
         <h2 class="dishes-heading">Your plates</h2>
         ${kept.length
-          ? `<div class="dishes-grid">${kept.map((d, i) => dishCardHtml(d, { key: String(i), kind: 'kept' })).join('')}</div>`
-          : `<p class="muted dishes-empty">No kept plates yet — Create dish or pick a shop starter</p>`}
+          ? `<div class="dishes-eq-list">${kept.map((d, i) => dishEquationHtml(d, { key: String(i), kind: 'kept' })).join('')}</div>`
+          : `<p class="muted dishes-empty">No complete plates yet — Create dish or pick a shop starter</p>`}
       </section>
       <section class="dishes-section">
         <h2 class="dishes-heading">Shop starters</h2>
-        <div class="dishes-grid">${starters.map((d, i) => dishCardHtml(d, { key: String(i), kind: 'shop' })).join('')}</div>
+        ${starters.length
+          ? `<div class="dishes-eq-list">${starters.map((d, i) => dishEquationHtml(d, { key: String(i), kind: 'shop' })).join('')}</div>`
+          : `<p class="muted dishes-empty">No shop dishes match</p>`}
       </section>
     `;
 
@@ -2488,7 +2550,9 @@
       });
     });
 
-    el.querySelectorAll('.dish-browse-card').forEach((btn) => {
+    enhanceArtImages(el);
+
+    el.querySelectorAll('.dish-eq-row').forEach((btn) => {
       btn.addEventListener('click', () => {
         const kind = btn.dataset.kind;
         const idx = Number(btn.dataset.key);
