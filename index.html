@@ -145,7 +145,7 @@
       </section>
     </main>
 
-    <!-- DISHES browse: kept + shop starters -->
+    <!-- DISHES browse: complete dishes as equations (dish = ingredients) -->
     <main id="view-dishes" class="view hidden">
       <button type="button" class="back-btn" id="btn-back-from-dishes">← Locker</button>
       <label class="locker-search-wrap" for="dishes-search" style="padding:0 0.85rem">
@@ -153,7 +153,7 @@
         <input type="search" id="dishes-search" class="locker-search" placeholder="Search dishes…"
           autocomplete="off" enterkeyhint="search" />
       </label>
-      <div id="dishes-browse" class="dishes-browse"></div>
+      <div id="dishes-browse" class="dishes-browse" role="list" aria-label="Complete dishes as equations"></div>
     </main>
 
     <!-- DISH: finished plate + visual variations -->
