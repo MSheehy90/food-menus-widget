@@ -346,8 +346,43 @@
         Object.keys(store.scoring).forEach((id) => markDirty(store, 'scoring', id));
       }
     }
+    migrateRetiredDisplayNames(store, catalog);
     saveCache(store);
     return store;
+  }
+
+  /**
+   * Adopt baked catalog renames when local SoT still holds a retired display name.
+   * Keeps intentional user renames (anything other than the retired string).
+   */
+  function migrateRetiredDisplayNames(store, catalog) {
+    const retired = {
+      'thick-white-noodles': 'Thick white noodles'
+    };
+    const byId = new Map((catalog?.ingredients || []).map((ing) => [ing.id, ing]));
+    let changed = false;
+    Object.entries(retired).forEach(([id, oldName]) => {
+      const row = store.ingredients?.[id];
+      const baked = byId.get(id);
+      const nextName = String(baked?.name || '').trim();
+      if (!row || !nextName || nextName === oldName) return;
+      if (String(row.name || '').trim() !== oldName) return;
+      row.name = nextName;
+      const parts = String(row.process_chain || '')
+        .split(/\s*→\s*/)
+        .map((p) => (p === oldName ? nextName : p))
+        .filter(Boolean);
+      row.process_chain = parts.length ? parts.join(' → ') : nextName;
+      row.updatedAt = nowIso();
+      markDirty(store, 'ingredients', id);
+      if (store.assets?.[id]) {
+        store.assets[id].item = nextName;
+        store.assets[id].updatedAt = row.updatedAt;
+        markDirty(store, 'assets', id);
+      }
+      changed = true;
+    });
+    return changed;
   }
 
   /** Apply sheet/local ingredient rows onto live catalog objects (art + meta). */
@@ -1066,6 +1101,7 @@
     } else if (typeof onStatus === 'function' && tryPull && !hasClientId()) {
       onStatus('Local SoT cache ready · live two-way needs HTTPS + Google sign-in');
     }
+    if (migrateRetiredDisplayNames(store, catalog)) saveCache(store);
     applyIngredientRowsToCatalog(catalog, store.ingredients, store.assets);
     const baked = await loadBakedFoodMasterRows();
     const dirtyIngredientIds = Object.keys(store.dirty?.ingredients || {});
